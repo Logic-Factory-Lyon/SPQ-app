@@ -1,0 +1,20 @@
+<?php
+return [
+    'accept'           => 'Accepter l\'invitation',
+    'expired_title'    => 'Invitation expirée',
+    'expired_message'  => 'Ce lien d\'invitation a expiré. Veuillez demander une nouvelle invitation.',
+    'already_accepted' => 'Cette invitation a déjà été acceptée.',
+    'accepted'         => 'Bienvenue ! Vous avez rejoint le projet :project.',
+    'email_mismatch'   => 'Ce compte ne correspond pas à l\'adresse email invitée.',
+    'invited_to'       => 'Vous avez été invité à rejoindre le projet',
+    'create_account'   => 'Créer un compte',
+    'login_existing'   => 'Se connecter avec un compte existant',
+    'name'             => 'Nom complet',
+    'password'         => 'Mot de passe',
+    'password_confirm' => 'Confirmer le mot de passe',
+    'submit_register'  => 'Créer mon compte et rejoindre',
+    'submit_login'     => 'Se connecter et rejoindre',
+    'role_manager'     => 'Manager',
+    'role_employee'    => 'Membre',
+    'your_role'        => 'Votre rôle',
+];

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>app.SPQ.daemon</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/YOUR_USER/SPQ_daemon/SPQ_daemon.py</string>
+        <string>--token</string>
+        <string>YOUR_MACHINE_TOKEN_HERE</string>
+        <string>--api</string>
+        <string>https://SPQ.app/api</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/SPQ_daemon.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/SPQ_daemon_error.log</string>
+    <key>ThrottleInterval</key>
+    <integer>5</integer>
+</dict>
+</plist>

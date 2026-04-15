@@ -131,6 +131,14 @@
                                         <button type="submit" class="text-xs text-red-400 hover:text-red-300 transition-colors">Supprimer</button>
                                     </form>
                                 </div>
+                                @php $agentSkills = $ag->skills()->where('is_active', true)->get(); @endphp
+                                @if($agentSkills->count() > 0)
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    @foreach($agentSkills as $sk)
+                                    <span class="text-xs bg-indigo-900/50 text-indigo-300 px-2 py-0.5 rounded">{{ $sk->name }}</span>
+                                    @endforeach
+                                </div>
+                                @endif
                                 @endforeach
                             </div>
                             @endif

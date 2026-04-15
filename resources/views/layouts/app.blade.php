@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr" class="h-full bg-gray-950">
+<html lang="{{ app()->getLocale() }}" class="h-full bg-gray-950">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -119,7 +119,7 @@
                     </div>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <button type="submit" title="Déconnexion"
+                        <button type="submit" title="{{ __('app.logout') }}"
                             class="text-gray-500 hover:text-gray-300 transition-colors">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -175,7 +175,7 @@
             </div>
 
             <!-- Page content -->
-            <main class="flex-1 overflow-y-auto p-4 lg:p-6">
+            <main class="flex-1 @yield('main_class', 'overflow-y-auto p-4 lg:p-6')">
                 @yield('content')
             </main>
         </div>

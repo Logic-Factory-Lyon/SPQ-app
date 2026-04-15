@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             SuperadminSeeder::class,
             ServiceSeeder::class,
             EmailTemplateSeeder::class,
+            SkillSeeder::class,
         ]);
     }
 }

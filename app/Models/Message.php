@@ -9,12 +9,14 @@ class Message extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'conversation_id', 'direction', 'content', 'status', 'error_message', 'processed_at',
+        'conversation_id', 'direction', 'message_type', 'content', 'status',
+        'error_message', 'metadata', 'processed_at',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
         'processed_at' => 'datetime',
+        'metadata' => 'array',
     ];
 
     public function conversation(): BelongsTo

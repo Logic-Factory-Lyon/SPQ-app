@@ -1,8 +1,8 @@
 @extends('layouts.app')
-@section('title', 'Tableau de bord')
+@section('title', __('app.dashboard'))
 @section('content')
-    <x-page-header title="Bonjour, {{ auth()->user()->name }}"
-        subtitle="{{ $member ? 'Projet : ' . $member->project->name : 'Vous n\'êtes associé à aucun projet.' }}" />
+    <x-page-header title="{{ __('app.hello', ['name' => auth()->user()->name]) }}"
+        subtitle="{{ $member ? __('app.project_label', ['name' => $member->project->name]) : __('app.no_project') }}" />
 
     @if($member)
         @php $agent = $member->agent; $machine = $agent?->macMachine; @endphp
@@ -11,15 +11,15 @@
             <div class="text-sm {{ $machine?->status === 'online' ? 'text-green-400' : 'text-gray-500' }}">
                 @if($agent)
                     <span class="font-medium text-white">{{ $agent->name }}</span>
-                    <span class="text-gray-500 ml-2">{{ $machine?->status === 'online' ? '· disponible' : '· hors ligne' }}</span>
+                    <span class="text-gray-500 ml-2">{{ $machine?->status === 'online' ? '· ' . __('app.available') : '· ' . __('app.offline') }}</span>
                 @else
-                    Aucun agent assigné — contactez votre manager.
+                    {{ __('app.no_agent') }}
                 @endif
             </div>
         </div>
     @else
         <div class="mb-6 p-4 bg-yellow-900/30 border border-yellow-800 rounded-xl text-yellow-400 text-sm">
-            Contactez votre manager pour être associé à un projet.
+            {{ __('app.contact_manager') }}
         </div>
     @endif
 
@@ -33,7 +33,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
                 </svg>
-                Démarrer une conversation
+                {{ __('app.start_conversation') }}
             </button>
         </form>
     </div>
@@ -42,8 +42,8 @@
     @if($recentConversations->isNotEmpty())
     <div class="bg-gray-900 rounded-xl border border-gray-800">
         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-            <h3 class="font-semibold text-white">Conversations récentes</h3>
-            <a href="{{ route('employee.conversations.index') }}" class="text-sm text-indigo-400 hover:text-indigo-300">Voir tout →</a>
+            <h3 class="font-semibold text-white">{{ __('app.recent_conversations') }}</h3>
+            <a href="{{ route('employee.conversations.index') }}" class="text-sm text-indigo-400 hover:text-indigo-300">{{ __('app.see_all') }}</a>
         </div>
         <div class="divide-y divide-gray-800">
             @foreach($recentConversations as $conv)

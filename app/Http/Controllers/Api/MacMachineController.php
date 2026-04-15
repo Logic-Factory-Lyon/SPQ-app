@@ -78,17 +78,20 @@ class MacMachineController extends Controller
             'error' => 'nullable|string',
         ]);
 
-        if (! empty($validated['error'])) {
+        $error   = $validated['error'] ?? null;
+        $result  = $validated['result'] ?? null;
+
+        if ($error) {
             $message->update([
                 'status' => 'error',
-                'error_message' => $validated['error'],
+                'error_message' => $error,
                 'processed_at' => now(),
             ]);
 
             return response()->json(['status' => 'error_recorded']);
         }
 
-        $inbound = $this->poller->submitResult($message, $machine, $validated['result']);
+        $inbound = $this->poller->submitResult($message, $machine, $result ?? '');
 
         return response()->json([
             'status' => 'ok',

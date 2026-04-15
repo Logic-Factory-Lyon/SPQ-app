@@ -18,6 +18,8 @@ use App\Http\Controllers\Superadmin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Superadmin\ProjectMemberController as AdminMemberController;
 use App\Http\Controllers\Superadmin\EmailTemplateController;
 use App\Http\Controllers\Superadmin\AgentController;
+use App\Http\Controllers\Superadmin\SkillController;
+use App\Http\Controllers\Employee\SkillController as EmployeeSkillController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboard;
 use App\Http\Controllers\Client\ProjectController as ClientProjectController;
 use App\Http\Controllers\Client\MemberController as ClientMemberController;
@@ -131,6 +133,11 @@ Route::middleware(['auth', 'role:superadmin'])
         Route::delete('projects/{project}/agents/{agent}', [AgentController::class, 'destroy'])->name('projects.agents.destroy');
         Route::post('projects/{project}/agents/{agent}/register-webhook', [AgentController::class, 'registerWebhook'])->name('projects.agents.register-webhook');
 
+        // Skills
+        Route::resource('skills', SkillController::class);
+        Route::post('projects/{project}/agents/{agent}/skills/{skill}', [SkillController::class, 'attach'])->name('projects.agents.skills.attach');
+        Route::delete('projects/{project}/agents/{agent}/skills/{skill}', [SkillController::class, 'detach'])->name('projects.agents.skills.detach');
+
         // Email Templates
         Route::get('email-templates', [EmailTemplateController::class, 'index'])->name('email-templates.index');
         Route::get('email-templates/{key}/{lang}/edit', [EmailTemplateController::class, 'edit'])->name('email-templates.edit');
@@ -186,8 +193,10 @@ Route::middleware(['auth', 'role:employee'])
     ->group(function () {
 
         Route::get('dashboard', [EmployeeDashboard::class, 'index'])->name('dashboard');
+        Route::get('skills', [EmployeeSkillController::class, 'index'])->name('skills.index');
         Route::resource('conversations', EmployeeConversationController::class)->only(['index', 'show', 'store', 'destroy']);
         Route::post('conversations/{conversation}/messages', [EmployeeConversationController::class, 'sendMessage'])->name('conversations.messages.store');
+        Route::post('conversations/{conversation}/skill', [EmployeeSkillController::class, 'dispatch'])->name('conversations.skill.dispatch');
         Route::get('conversations/{conversation}/poll', [EmployeeConversationController::class, 'poll'])->name('conversations.poll');
     });
 

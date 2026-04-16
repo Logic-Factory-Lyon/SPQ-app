@@ -1,41 +1,36 @@
 #!/usr/bin/env python3
 """
-SPQ Daemon - Mac Mini Agent Bridge (SSH/MySQL direct mode)
-Bypasses SiteGround HTTP entirely by connecting to MySQL via SSH tunnel.
+SPQ Daemon - Mac Mini Agent Bridge (HTTP API mode)
+Uses the SPQ Laravel HTTP API to poll for pending messages and submit results.
+Also handles agent initialization/resync tasks.
 
 Usage:
     python3 spq_daemon.py --token TOKEN [options]
 
-Install dependency:
-    pip3 install pymysql
+No SSH tunnel or direct MySQL access needed — all communication goes through HTTPS.
 """
 
 import argparse
 import json
 import logging
-import platform
 import subprocess
 import sys
 import time
 import os
+import platform
+import shutil
+import urllib.request
+import urllib.error
 from typing import Optional
 
-import pymysql
-import pymysql.cursors
-
 # ── Globals ─────────────────────────────────────────────────────────────────
-_tunnel_proc: Optional[subprocess.Popen] = None
-_db_conn:     Optional[pymysql.connections.Connection] = None
-
 POLL_INTERVAL      = 5    # seconds between polls
 HEARTBEAT_INTERVAL = 30   # seconds between heartbeats
 OPENCLAW_BINARY    = 'openclaw'
 OPENCLAW_TIMEOUT   = 300  # 5 minutes max per task
-
-# Filled by argparse
-SSH_HOST = ''; SSH_PORT = 18765; SSH_USER = ''; SSH_KEY = ''
-DB_HOST  = '127.0.0.1'; DB_PORT = 3307
-DB_NAME  = ''; DB_USER = ''; DB_PASS = ''
+SPQ_BASE_URL       = 'https://spq.app'
+DAEMON_VERSION     = 4     # increment when breaking changes are deployed
+SELF_UPDATE_INTERVAL = 300  # check for updates every 5 minutes
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -49,117 +44,32 @@ logging.basicConfig(
 log = logging.getLogger('SPQ_daemon')
 
 
-# ── SSH Tunnel ───────────────────────────────────────────────────────────────
+# ── HTTP helpers ─────────────────────────────────────────────────────────────
 
-def ensure_tunnel() -> bool:
-    """Start or restart the SSH tunnel if it is not running."""
-    global _tunnel_proc, _db_conn
+def api_request(method: str, path: str, token: str, data: dict = None) -> dict:
+    """Make an authenticated API request to SPQ."""
+    url = f'{SPQ_BASE_URL}{path}'
+    body = json.dumps(data).encode() if data else None
 
-    if _tunnel_proc and _tunnel_proc.poll() is None:
-        return True  # Tunnel still alive
-
-    log.info(f"Opening SSH tunnel → {SSH_USER}@{SSH_HOST}:{SSH_PORT} (MySQL on 127.0.0.1:{DB_PORT})")
-
-    cmd = [
-        'ssh', '-N', '-q',
-        '-L', f'{DB_PORT}:127.0.0.1:3306',
-        '-p', str(SSH_PORT),
-        '-o', 'StrictHostKeyChecking=no',
-        '-o', 'ServerAliveInterval=30',
-        '-o', 'ServerAliveCountMax=3',
-        '-o', 'ExitOnForwardFailure=yes',
-        '-o', 'ConnectTimeout=15',
-    ]
-    if SSH_KEY:
-        cmd += ['-i', os.path.expanduser(SSH_KEY)]
-    cmd.append(f'{SSH_USER}@{SSH_HOST}')
+    req = urllib.request.Request(url, data=body, method=method)
+    req.add_header('Authorization', f'Bearer {token}')
+    req.add_header('Accept', 'application/json')
+    req.add_header('Content-Type', 'application/json')
+    req.add_header('User-Agent', 'SPQ-Daemon/1.0')
 
     try:
-        _tunnel_proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(3)
-        if _tunnel_proc.poll() is not None:
-            log.error('SSH tunnel exited immediately. Vérifiez votre clé SSH et les paramètres de connexion.')
-            return False
-        log.info(f'Tunnel SSH actif (PID {_tunnel_proc.pid})')
-        _db_conn = None  # Force reconnect to MySQL after tunnel restart
-        return True
-    except FileNotFoundError:
-        log.error("Commande 'ssh' introuvable.")
-        return False
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode() if e.fp else ''
+        log.error(f'HTTP {e.code} on {method} {path}: {body[:200]}')
+        return {}
+    except urllib.error.URLError as e:
+        log.error(f'Connection error on {method} {path}: {e.reason}')
+        return {}
     except Exception as e:
-        log.error(f'Tunnel error: {e}')
-        return False
-
-
-# ── MySQL ────────────────────────────────────────────────────────────────────
-
-def get_db() -> Optional[pymysql.connections.Connection]:
-    """Return a live MySQL connection, reconnecting if needed."""
-    global _db_conn
-
-    try:
-        if _db_conn:
-            _db_conn.ping(reconnect=True)
-            return _db_conn
-    except Exception:
-        _db_conn = None
-
-    try:
-        _db_conn = pymysql.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            user=DB_USER,
-            password=DB_PASS,
-            database=DB_NAME,
-            charset='utf8mb4',
-            cursorclass=pymysql.cursors.DictCursor,
-            autocommit=False,
-            connect_timeout=10,
-        )
-        log.info('MySQL connecté.')
-        return _db_conn
-    except Exception as e:
-        log.error(f'MySQL connection error: {e}')
-        return None
-
-
-def get_machine_id(token: str) -> Optional[int]:
-    db = get_db()
-    if not db: return None
-    try:
-        with db.cursor() as cur:
-            cur.execute('SELECT id FROM mac_machines WHERE token = %s', (token,))
-            row = cur.fetchone()
-        db.commit()
-        return row['id'] if row else None
-    except Exception as e:
-        db.rollback()
-        log.error(f'get_machine_id: {e}')
-        return None
-
-
-# ── Heartbeat ────────────────────────────────────────────────────────────────
-
-def send_heartbeat(machine_id: int) -> None:
-    db = get_db()
-    if not db: return
-    metadata = json.dumps({
-        'os_version':       platform.mac_ver()[0] or platform.system(),
-        'hostname':         platform.node(),
-        'openclaw_version': get_openclaw_version(),
-        'openclaw_agents':  get_openclaw_agents(),
-    })
-    try:
-        with db.cursor() as cur:
-            cur.execute(
-                "UPDATE mac_machines SET status='online', last_seen_at=NOW(), metadata=%s WHERE id=%s",
-                (metadata, machine_id)
-            )
-        db.commit()
-        log.debug('Heartbeat OK')
-    except Exception as e:
-        db.rollback()
-        log.error(f'Heartbeat error: {e}')
+        log.error(f'Request error on {method} {path}: {e}')
+        return {}
 
 
 # ── OpenClaw ─────────────────────────────────────────────────────────────────
@@ -200,9 +110,9 @@ def get_openclaw_agents() -> list:
 
 def run_openclaw(profile: str, content: str) -> tuple[Optional[str], Optional[str]]:
     try:
-        log.info(f'Running openclaw --profile {profile}')
+        log.info(f'Running openclaw --agent {profile}')
         r = subprocess.run(
-            [OPENCLAW_BINARY, 'agent', '--profile', profile, '--message', content],
+            [OPENCLAW_BINARY, 'agent', '--agent', profile, '--message', content],
             capture_output=True, text=True, timeout=OPENCLAW_TIMEOUT,
         )
         if r.returncode != 0:
@@ -211,173 +121,296 @@ def run_openclaw(profile: str, content: str) -> tuple[Optional[str], Optional[st
             return None, error
         output = r.stdout.strip()
         if not output:
-            return None, "Réponse vide de l'agent."
+            return None, 'Empty response from agent.'
         log.info(f'openclaw OK ({profile}) — {len(output)} chars')
         return output, None
     except subprocess.TimeoutExpired:
-        return None, f'Timeout après {OPENCLAW_TIMEOUT}s'
+        return None, f'Timeout after {OPENCLAW_TIMEOUT}s'
     except FileNotFoundError:
-        return None, 'Binaire openclaw introuvable.'
+        return None, 'openclaw binary not found.'
     except Exception as e:
         return None, str(e)
 
 
-# ── Message polling & dispatch ───────────────────────────────────────────────
+# ── Self-update ──────────────────────────────────────────────────────────────
 
-def get_pending_messages(machine_id: int) -> list:
-    """Fetch pending messages and mark them as 'processing' atomically."""
-    db = get_db()
-    if not db: return []
+def check_self_update(token: str) -> bool:
+    """Download latest daemon script from SPQ and restart if version is newer."""
+    log.info('Checking for daemon update...')
+    resp = api_request('GET', '/daemon/script', token)
+    # api_request returns dict on JSON, but /daemon/script returns plain text
+    # So we fetch it directly
+    url = f'{SPQ_BASE_URL}/daemon/script'
+    req = urllib.request.Request(url)
+    req.add_header('User-Agent', 'SPQ-Daemon/1.0')
     try:
-        with db.cursor() as cur:
-            cur.execute("""
-                SELECT m.id, m.conversation_id, m.content, a.profile AS openclaw_profile
-                FROM messages m
-                JOIN conversations   c  ON m.conversation_id   = c.id
-                JOIN project_members pm ON c.project_member_id = pm.id
-                JOIN agents          a  ON pm.agent_id         = a.id
-                WHERE m.direction = 'out'
-                  AND m.status    = 'pending'
-                  AND a.mac_machine_id = %s
-                LIMIT 10
-                FOR UPDATE
-            """, (machine_id,))
-            rows = cur.fetchall()
-
-            if rows:
-                ids = [r['id'] for r in rows]
-                fmt = ','.join(['%s'] * len(ids))
-                cur.execute(f"UPDATE messages SET status='processing' WHERE id IN ({fmt})", ids)
-
-        db.commit()
-        return rows
+        with urllib.request.urlopen(req, timeout=30) as r:
+            new_script = r.read().decode('utf-8')
     except Exception as e:
-        db.rollback()
-        log.error(f'get_pending_messages: {e}')
-        return []
+        log.error(f'Failed to download daemon update: {e}')
+        return False
+
+    # Find DAEMON_VERSION in the downloaded script
+    import re
+    match = re.search(r'^DAEMON_VERSION\s*=\s*(\d+)', new_script, re.MULTILINE)
+    remote_version = int(match.group(1)) if match else 1
+    log.info(f'Remote daemon version: {remote_version}, local: {DAEMON_VERSION}')
+
+    if remote_version <= DAEMON_VERSION:
+        log.info('Daemon is up to date.')
+        return False
+
+    # Write new script to disk
+    script_path = os.path.abspath(__file__)
+    backup_path = script_path + '.bak'
+
+    log.info(f'Updating daemon: v{DAEMON_VERSION} → v{remote_version}')
+    shutil.copy2(script_path, backup_path)
+
+    with open(script_path, 'w', encoding='utf-8') as f:
+        f.write(new_script)
+    os.chmod(script_path, os.stat(script_path).st_mode | 0o755)
+
+    log.info(f'Daemon updated to v{remote_version}. Restarting...')
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+    return True  # never reached
 
 
-def submit_result(msg: dict, result: Optional[str], error: Optional[str]) -> None:
-    """Write OpenClaw result back to MySQL."""
-    db = get_db()
-    if not db: return
-    try:
-        with db.cursor() as cur:
-            if error:
-                cur.execute(
-                    "UPDATE messages SET status='error', error_message=%s, processed_at=NOW() WHERE id=%s",
-                    (error[:1000], msg['id'])
-                )
-            else:
-                cur.execute(
-                    "UPDATE messages SET status='done', processed_at=NOW() WHERE id=%s",
-                    (msg['id'],)
-                )
-                cur.execute(
-                    """INSERT INTO messages (conversation_id, direction, content, status)
-                       VALUES (%s, 'out', %s, 'response')""",
-                    (msg['conversation_id'], result)
-                )
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        log.error(f'submit_result: {e}')
+# ── Agent Initialization ────────────────────────────────────────────────────
+
+def expand_path(path: str) -> str:
+    """Expand ~ and environment variables in a path."""
+    return os.path.expanduser(os.path.expandvars(path))
 
 
-def process_message(msg: dict) -> None:
-    profile = msg.get('openclaw_profile')
+def initialize_agent(task: dict) -> tuple[Optional[str], Optional[str]]:
+    """
+    Initialize an agent workspace on this machine and register it in OpenClaw.
+    task['payload'] contains: profile, name, system_prompt, project_id, agent_id, skills
+    """
+    payload = task.get('payload', {})
+    profile = payload.get('profile', '')
+    name = payload.get('name', 'unknown')
+    system_prompt = payload.get('system_prompt', '')
+    project_id = payload.get('project_id', 0)
+    agent_id = payload.get('agent_id', 0)
+    skills = payload.get('skills', [])
+
     if not profile:
-        log.warning(f"Message {msg['id']} sans profil openclaw, ignoré.")
-        submit_result(msg, None, 'Profil OpenClaw non configuré.')
+        return None, 'No profile specified for agent initialization.'
+
+    # Workspace path: ~/.openclaw/spqapp/{project_id}/agents/workspace-{agent_id}
+    # Use 0 for agents without a project (standalone CRUD)
+    pid = project_id if project_id else 0
+    workspace_path = f'~/.openclaw/spqapp/{pid}/agents/workspace-{agent_id}'
+    workspace = expand_path(workspace_path)
+
+    try:
+        log.info(f'Initializing agent "{name}" (profile={profile}) at {workspace}')
+
+        # 1. Create workspace directory
+        os.makedirs(workspace, exist_ok=True)
+        log.info(f'Created workspace: {workspace}')
+
+        # 2. Write SOUL.md (system prompt)
+        soul_path = os.path.join(workspace, 'SOUL.md')
+        with open(soul_path, 'w', encoding='utf-8') as f:
+            f.write(f'# {name}\n\n')
+            f.write(system_prompt or f'You are {name}, an AI agent managed by SPQ.')
+            f.write('\n')
+        log.info(f'Written SOUL.md ({os.path.getsize(soul_path)} bytes)')
+
+        # 3. Write MEMORY.md
+        memory_path = os.path.join(workspace, 'MEMORY.md')
+        if not os.path.exists(memory_path):
+            with open(memory_path, 'w', encoding='utf-8') as f:
+                f.write(f'# Memory — {name}\n\n')
+                f.write('This file is the agent\'s persistent memory.\n')
+            log.info('Created MEMORY.md')
+
+        # 4. Write skills configuration
+        if skills:
+            skills_dir = os.path.join(workspace, 'skills')
+            os.makedirs(skills_dir, exist_ok=True)
+
+            skills_json_path = os.path.join(skills_dir, 'skills.json')
+            with open(skills_json_path, 'w', encoding='utf-8') as f:
+                json.dump(skills, f, indent=2)
+            log.info(f'Written skills.json ({len(skills)} skills)')
+
+            for skill in skills:
+                slug = skill.get('slug', 'unknown')
+                skill_file = os.path.join(skills_dir, f'{slug}.md')
+                with open(skill_file, 'w', encoding='utf-8') as f:
+                    f.write(f'# {skill.get("name", slug)}\n\n')
+                    f.write(skill.get('prompt_template', ''))
+                    f.write('\n')
+                log.info(f'Written skill: {slug}.md')
+
+        # 5. Register agent in OpenClaw via CLI
+        agent_registered = False
+        try:
+            # Check if agent already exists
+            existing = get_openclaw_agents()
+            if any(a.get('profile') == profile for a in existing):
+                log.info(f'Agent "{profile}" already exists in OpenClaw — skipping add')
+                agent_registered = True
+            else:
+                log.info(f'Creating agent in OpenClaw: openclaw agents add {profile}')
+                r = subprocess.run(
+                    [OPENCLAW_BINARY, 'agents', 'add', profile,
+                     '--workspace', workspace,
+                     '--non-interactive',
+                     '--json'],
+                    capture_output=True, text=True, timeout=30
+                )
+                if r.returncode == 0:
+                    agent_registered = True
+                    log.info(f'Agent "{profile}" created in OpenClaw')
+                else:
+                    error_msg = r.stderr.strip() or f'Exit code {r.returncode}'
+                    log.warning(f'Failed to create agent in OpenClaw: {error_msg}')
+        except Exception as e:
+            log.warning(f'Error creating agent in OpenClaw: {e}')
+
+        result_parts = [
+            f'Workspace: {workspace}',
+            f'SOUL.md: {os.path.getsize(soul_path)} bytes',
+            f'Skills: {len(skills)} configured',
+            f'OpenClaw agent: {"registered" if agent_registered else "failed (check logs)"}',
+        ]
+
+        log.info(f'Agent "{name}" initialization complete')
+        return '\n'.join(result_parts), None
+
+    except PermissionError as e:
+        return None, f'Permission denied: {e}'
+    except OSError as e:
+        return None, f'OS error: {e}'
+    except Exception as e:
+        return None, f'Unexpected error: {e}'
+
+
+def process_tasks(token: str):
+    """Poll and process agent initialization tasks."""
+    resp = api_request('GET', '/api/mac/tasks/pending', token)
+    tasks = resp.get('tasks', [])
+
+    if not tasks:
         return
 
-    result, error = run_openclaw(profile, msg['content'])
-    submit_result(msg, result, error)
+    log.info(f'{len(tasks)} task(s) to process.')
+    for task in tasks:
+        task_type = task.get('type', '')
+        task_id = task.get('id')
+        log.info(f'Processing task {task_id} (type={task_type})')
+
+        if task_type in ('initialize', 'resync'):
+            result, error = initialize_agent(task)
+        elif task_type == 'destroy':
+            # Future: clean up workspace
+            result, error = 'Destroy not yet implemented.', None
+        else:
+            result, error = None, f'Unknown task type: {task_type}'
+
+        if error:
+            log.error(f'Task {task_id} failed: {error}')
+            api_request('POST', f'/api/mac/tasks/{task_id}/result', token, {
+                'error': error[:2000]
+            })
+        else:
+            log.info(f'Task {task_id} succeeded')
+            api_request('POST', f'/api/mac/tasks/{task_id}/result', token, {
+                'result': result or 'OK'
+            })
 
 
 # ── Main loop ────────────────────────────────────────────────────────────────
 
 def main():
-    global SSH_HOST, SSH_PORT, SSH_USER, SSH_KEY
-    global DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS
-    global OPENCLAW_BINARY
+    global SPQ_BASE_URL, OPENCLAW_BINARY
 
-    parser = argparse.ArgumentParser(description='SPQ Daemon — SSH/MySQL mode')
-    parser.add_argument('--token',        required=True,  help='Token de la machine (mac_machines.token)')
-    parser.add_argument('--ssh-host',     default='ssh.spq.app')
-    parser.add_argument('--ssh-port',     type=int, default=18765)
-    parser.add_argument('--ssh-user',     default='u685-ubgnyznjtpvj')
-    parser.add_argument('--ssh-key',      default='',     help='Chemin clé privée SSH (défaut : clé SSH par défaut)')
-    parser.add_argument('--db-host',      default='127.0.0.1')
-    parser.add_argument('--db-port',      type=int, default=3307)
-    parser.add_argument('--db-name',      required=True)
-    parser.add_argument('--db-user',      required=True)
-    parser.add_argument('--db-pass',      required=True)
+    parser = argparse.ArgumentParser(description='SPQ Daemon — HTTP API mode')
+    parser.add_argument('--token',        required=True,  help='Machine token (mac_machines.token)')
+    parser.add_argument('--api-url',      default=SPQ_BASE_URL, help='SPQ API base URL')
     parser.add_argument('--openclaw',     default=OPENCLAW_BINARY)
     parser.add_argument('--poll-interval',type=int, default=POLL_INTERVAL)
     args = parser.parse_args()
 
-    SSH_HOST = args.ssh_host
-    SSH_PORT = args.ssh_port
-    SSH_USER = args.ssh_user
-    SSH_KEY  = args.ssh_key
-    DB_HOST  = args.db_host
-    DB_PORT  = args.db_port
-    DB_NAME  = args.db_name
-    DB_USER  = args.db_user
-    DB_PASS  = args.db_pass
+    SPQ_BASE_URL   = args.api_url.rstrip('/')
     OPENCLAW_BINARY = args.openclaw
+    token          = args.token
 
-    log.info(f'SPQ Daemon démarrage — tunnel SSH → {SSH_USER}@{SSH_HOST}:{SSH_PORT}')
+    log.info(f'SPQ Daemon starting (HTTP) — API: {SPQ_BASE_URL}')
 
-    machine_id    = None
     last_heartbeat = 0
+    last_self_update = 0
 
     while True:
         try:
-            # ── 1. Ensure SSH tunnel ──────────────────────────────────────
-            if not ensure_tunnel():
-                log.error('Tunnel SSH indisponible — nouvelle tentative dans 30s')
-                time.sleep(30)
-                continue
-
-            # ── 2. Identify this machine ──────────────────────────────────
-            if machine_id is None:
-                machine_id = get_machine_id(args.token)
-                if machine_id is None:
-                    log.error('Token introuvable en base. Vérifiez --token.')
-                    time.sleep(60)
-                    continue
-                log.info(f'Machine ID : {machine_id}')
-
-            # ── 3. Heartbeat ──────────────────────────────────────────────
             now = time.time()
+
+            # ── 1. Heartbeat ──────────────────────────────────────────────
             if now - last_heartbeat >= HEARTBEAT_INTERVAL:
-                send_heartbeat(machine_id)
+                metadata = {
+                    'os_version':       platform.mac_ver()[0] or platform.system(),
+                    'hostname':         platform.node(),
+                    'openclaw_version': get_openclaw_version(),
+                    'openclaw_agents':  get_openclaw_agents(),
+                }
+                resp = api_request('POST', '/api/mac/heartbeat', token, {'metadata': metadata})
+                if resp.get('status') == 'ok':
+                    log.debug('Heartbeat OK')
+                    # Check if server wants us to restart/update
+                    if resp.get('daemon_restart'):
+                        log.info('Daemon restart requested by server. Updating and restarting...')
+                        check_self_update(token)
+                else:
+                    log.warning('Heartbeat failed — check token.')
                 last_heartbeat = time.time()
 
+            # ── 2. Self-update check ─────────────────────────────────────
+            if now - last_self_update >= SELF_UPDATE_INTERVAL:
+                check_self_update(token)
+                last_self_update = time.time()
+
+            # ── 3. Poll pending agent tasks ──────────────────────────────
+            process_tasks(token)
+
             # ── 4. Poll pending messages ──────────────────────────────────
-            messages = get_pending_messages(machine_id)
+            resp = api_request('GET', '/api/mac/messages/pending', token)
+            messages = resp.get('messages', [])
+
             if messages:
-                log.info(f'{len(messages)} message(s) à traiter.')
+                log.info(f'{len(messages)} message(s) to process.')
                 for msg in messages:
-                    process_message(msg)
+                    profile = msg.get('openclaw_profile')
+                    if not profile:
+                        log.warning(f"Message {msg['id']} has no openclaw profile, skipping.")
+                        api_request('POST', f'/api/mac/messages/{msg["id"]}/result', token, {
+                            'error': 'OpenClaw profile not configured.'
+                        })
+                        continue
+
+                    result, error = run_openclaw(profile, msg['content'])
+
+                    if error:
+                        api_request('POST', f'/api/mac/messages/{msg["id"]}/result', token, {
+                            'error': error[:1000]
+                        })
+                    else:
+                        api_request('POST', f'/api/mac/messages/{msg["id"]}/result', token, {
+                            'result': result
+                        })
 
             time.sleep(args.poll_interval)
 
         except KeyboardInterrupt:
-            log.info('Daemon arrêté.')
+            log.info('Daemon stopped.')
             break
         except Exception as e:
-            log.error(f'Erreur boucle principale : {e}')
+            log.error(f'Main loop error: {e}')
             time.sleep(10)
-
-    # ── Cleanup ───────────────────────────────────────────────────────────
-    if _tunnel_proc and _tunnel_proc.poll() is None:
-        _tunnel_proc.terminate()
-    if _db_conn:
-        try: _db_conn.close()
-        except Exception: pass
 
 
 if __name__ == '__main__':

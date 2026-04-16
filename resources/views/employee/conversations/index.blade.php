@@ -1,20 +1,20 @@
 @extends('layouts.app')
-@section('title', 'Mon agent')
+@section('title', __('app.my_agent'))
 @section('header-actions')
     @if($agent && !$agent->isTelegram())
     <button x-data="" @click="$dispatch('open-modal', 'new-conv')"
         class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-        + Nouvelle conversation
+        + {{ __('app.new_conversation') }}
     </button>
     @endif
 @endsection
 @section('content')
-    <x-page-header title="Mon agent"
-        subtitle="{{ $agent ? $agent->name : 'Aucun agent assigné — contactez votre manager.' }}" />
+    <x-page-header title="{{ __('app.my_agent') }}"
+        subtitle="{{ $agent ? $agent->name : __('app.no_agent') }}" />
 
     @if(! $agent)
         <div class="mb-6 p-4 bg-yellow-900/30 border border-yellow-800 rounded-xl text-yellow-400 text-sm">
-            Aucun agent assigné. Contactez votre manager.
+            {{ __('app.no_agent') }}
         </div>
 
     @elseif($agent->isTelegram())
@@ -28,7 +28,7 @@
 
             <h2 class="text-2xl font-bold text-white mb-2">{{ $agent->name }}</h2>
             <p class="text-gray-400 mb-8 max-w-sm">
-                Votre agent est disponible sur Telegram. Cliquez ci-dessous pour ouvrir le chat directement dans l'application.
+                {{ __('app.telegram_description') }}
             </p>
 
             <a href="{{ $agent->telegramUrl() }}" target="_blank" rel="noopener noreferrer"
@@ -36,13 +36,13 @@
                 <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M11.944 0A12 12 0 1 0 24 12 12 12 0 0 0 11.944 0zm5.8 8.226-2.01 9.47c-.15.704-.545.876-1.104.545l-3.04-2.24-1.465 1.41c-.162.162-.298.298-.61.298l.218-3.087 5.63-5.086c.245-.217-.054-.338-.378-.121l-6.96 4.384-2.996-.938c-.652-.204-.663-.652.136-.965l11.7-4.51c.543-.197 1.018.133.879.84z"/>
                 </svg>
-                Ouvrir le chat Telegram
+                {{ __('app.open_telegram') }}
             </a>
 
             <p class="text-xs text-gray-600 mt-6">
                 &#64;{{ $agent->telegram_bot_username }}
                 &nbsp;·&nbsp;
-                Les conversations se passent directement dans Telegram.
+                {{ __('app.telegram_note') }}
             </p>
         </div>
 
@@ -50,12 +50,12 @@
         {{-- ── Mac Machine agent (legacy daemon) ─────────────────────── --}}
         <div class="flex items-center gap-2 mb-6 text-sm {{ $machine?->status === 'online' ? 'text-green-400' : 'text-red-400' }}">
             <div class="w-2 h-2 rounded-full {{ $machine?->status === 'online' ? 'bg-green-400 animate-pulse' : 'bg-red-400' }}"></div>
-            {{ $agent->name }} — {{ $machine?->status === 'online' ? 'en ligne' : 'hors ligne' }}
+            {{ $agent->name }} — {{ $machine?->status === 'online' ? __('app.agent_online') : __('app.agent_offline') }}
         </div>
 
         @if($conversations->isEmpty())
-            <x-empty-state title="Aucune conversation"
-                description="Démarrez une nouvelle conversation avec votre agent." />
+            <x-empty-state title="{{ __('app.no_conversations') }}"
+                description="{{ __('app.start_new_conversation') }}" />
         @else
             <div class="space-y-3">
                 @foreach($conversations as $conv)
@@ -80,21 +80,21 @@
         <div x-data="{ open: false }" @open-modal.window="open = ($event.detail === 'new-conv')" x-show="open" x-cloak
              class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
             <div @click.away="open = false" class="bg-gray-900 rounded-2xl border border-gray-800 p-6 w-full max-w-md">
-                <h3 class="text-white font-semibold text-lg mb-4">Nouvelle conversation</h3>
+                <h3 class="text-white font-semibold text-lg mb-4">{{ __('app.new_conversation') }}</h3>
                 <form method="POST" action="{{ route('employee.conversations.store') }}">
                     @csrf
                     <div class="mb-4">
-                        <label class="block text-sm text-gray-400 mb-1.5">Titre (optionnel)</label>
-                        <input type="text" name="title" placeholder="Ex: Analyse des ventes Q1..."
+                        <label class="block text-sm text-gray-400 mb-1.5">{{ __('app.title_optional') }}</label>
+                        <input type="text" name="title" placeholder="{{ __('app.title_placeholder') }}"
                             class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
                     <div class="flex gap-3">
                         <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-lg transition-colors">
-                            Créer
+                            {{ __('app.create') }}
                         </button>
                         <button type="button" @click="open = false"
                             class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-2.5 rounded-lg transition-colors">
-                            Annuler
+                            {{ __('app.cancel') }}
                         </button>
                     </div>
                 </form>

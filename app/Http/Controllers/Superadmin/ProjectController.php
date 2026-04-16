@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\MacMachine;
 use App\Models\Project;
+use App\Services\TeamCloningService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -88,5 +89,35 @@ class ProjectController extends Controller
         $project->update(['status' => 'cancelled']);
         return redirect()->route('admin.projects.index')
             ->with('success', 'Projet annulé.');
+    }
+
+    public function showCloneForm(Project $project): View
+    {
+        $project->load(['client', 'macMachines.agents.skills', 'members.user', 'members.agent']);
+        $clients = Client::active()->orderBy('name')->get();
+        $machines = MacMachine::orderBy('name')->get();
+        $telegramAgents = $project->telegramAgents()->get();
+
+        return view('superadmin.projects.clone', compact('project', 'clients', 'machines', 'telegramAgents'));
+    }
+
+    public function clone(Request $request, Project $project): RedirectResponse
+    {
+        $data = $request->validate([
+            'name'                  => 'required|string|max:255',
+            'client_id'             => 'required|exists:clients,id',
+            'mac_machine_id'        => 'nullable|exists:mac_machines,id',
+            'initialize_agents'    => 'nullable|boolean',
+            'agents'               => 'nullable|array',
+            'members'              => 'nullable|array',
+        ]);
+
+        $cloningService = new TeamCloningService();
+        $newProject = $cloningService->cloneTeam($project, $data);
+
+        $agentCount = $newProject->allAgents()->count();
+
+        return redirect()->route('admin.projects.show', $newProject)
+            ->with('success', __('app.team_cloned', ['count' => $agentCount]));
     }
 }

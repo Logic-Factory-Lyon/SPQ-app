@@ -8,9 +8,13 @@
     </div>
 @endsection
 @section('header-actions')
+    <a href="{{ route('admin.projects.clone', $project) }}"
+       class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+        {{ __('app.clone_team') }}
+    </a>
     <a href="{{ route('admin.projects.edit', $project) }}"
        class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-        Modifier
+        {{ __('app.edit') }}
     </a>
 @endsection
 @section('content')
@@ -131,6 +135,14 @@
                                         <button type="submit" class="text-xs text-red-400 hover:text-red-300 transition-colors">Supprimer</button>
                                     </form>
                                 </div>
+                                @php $agentSkills = $ag->skills()->where('is_active', true)->get(); @endphp
+                                @if($agentSkills->count() > 0)
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    @foreach($agentSkills as $sk)
+                                    <span class="text-xs bg-indigo-900/50 text-indigo-300 px-2 py-0.5 rounded">{{ $sk->name }}</span>
+                                    @endforeach
+                                </div>
+                                @endif
                                 @endforeach
                             </div>
                             @endif

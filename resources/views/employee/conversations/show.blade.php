@@ -1,8 +1,8 @@
 @extends('layouts.app')
-@section('title', $conversation->title ?: 'Conversation')
+@section('title', $conversation->title ?: __('app.conversations'))
 @section('header')
     <div class="flex items-center gap-2 text-sm text-gray-400">
-        <a href="{{ route('employee.conversations.index') }}" class="hover:text-white">Conversations</a>
+        <a href="{{ route('employee.conversations.index') }}" class="hover:text-white">{{ __('app.conversations') }}</a>
         <span>/</span>
         <span class="text-white truncate max-w-xs">{{ $conversation->title ?: 'Conversation #' . $conversation->id }}</span>
     </div>
@@ -11,21 +11,22 @@
     <form method="POST" action="{{ route('employee.conversations.store') }}">
         @csrf
         <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-            + Nouvelle conversation
+            {{ __('app.new_conversation_btn') }}
         </button>
     </form>
     <form method="POST" action="{{ route('employee.conversations.destroy', $conversation) }}"
-          onsubmit="return confirm('Supprimer cette conversation ?')">
+          onsubmit="return confirm('{{ __('app.delete_conversation') }}')">
         @csrf @method('DELETE')
         <button type="submit"
                 class="bg-gray-800 hover:bg-red-900 text-gray-400 hover:text-red-400 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-            Supprimer
+            {{ __('app.delete') }}
         </button>
     </form>
 @endsection
+@section('main_class', 'overflow-hidden p-0')
 @section('content')
 
-<div class="flex flex-col h-[calc(100vh-8rem)] max-w-3xl mx-auto"
+<div class="flex flex-col h-full max-w-3xl mx-auto p-4 lg:p-6"
      x-data="chatInterface({{ $conversation->id }}, {{ $messages->last()?->id ?? 0 }}, {{ $hasPending ? 'true' : 'false' }})"
      x-init="startPolling()">
 
@@ -34,7 +35,7 @@
     <div class="flex items-center gap-2 mb-3 text-xs {{ $machine?->status === 'online' ? 'text-green-400' : 'text-orange-400' }}">
         <div class="w-1.5 h-1.5 rounded-full {{ $machine?->status === 'online' ? 'bg-green-400' : 'bg-orange-400' }}"></div>
         <span class="font-medium">{{ $agent->name }}</span>
-        <span>— {{ $machine?->status === 'online' ? 'disponible' : 'hors ligne' }}</span>
+        <span>— {{ $machine?->status === 'online' ? __('app.available') : __('app.offline') }}</span>
     </div>
     @endif
 
@@ -47,6 +48,9 @@
                 {{ $isAgent
                     ? ($msg->status === 'error' ? 'bg-red-900/50 text-red-300 border border-red-800 rounded-bl-sm' : 'bg-gray-800 text-gray-200 rounded-bl-sm')
                     : 'bg-indigo-600 text-white rounded-br-sm' }}">
+                @if($msg->message_type === 'skill' && !$isAgent)
+                    <div class="text-xs font-medium text-indigo-200 mb-1">{{ $msg->metadata['skill_name'] ?? __('app.skill') }}</div>
+                @endif
                 <div class="whitespace-pre-wrap">{{ $msg->content }}</div>
                 <div class="text-xs opacity-60 mt-1 text-right">{{ $msg->created_at->format('H:i') }}</div>
             </div>
@@ -54,7 +58,7 @@
         @endforeach
 
         <!-- Dynamic messages from polling -->
-        <template x-for="msg in newMessages" :key="msg.id">
+        <template x-for="msg in newMessages" :key="msg.id ?? Math.random()">
             <div :class="(msg.status === 'response' || msg.status === 'error') ? 'flex justify-start' : 'flex justify-end'">
                 <div :class="msg.status === 'response'
                     ? 'max-w-[80%] rounded-2xl rounded-bl-sm px-4 py-3 text-sm bg-gray-800 text-gray-200'
@@ -80,6 +84,34 @@
         </div>
     </div>
 
+    <!-- Skills panel -->
+    @if($skills && $skills->count() > 0)
+    <div class="mt-2 mb-1">
+        <div class="flex items-center gap-2 mb-2">
+            <span class="text-xs font-medium text-gray-400 uppercase tracking-wide">Skills</span>
+            <button type="button" @click="showSkills = !showSkills"
+                    class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                <span x-text="showSkills ? '{{ __('app.hide') }}' : '{{ __('app.show') }}'"></span>
+            </button>
+        </div>
+        <div x-show="showSkills" x-transition class="flex gap-2 flex-wrap">
+            @foreach($skills as $skill)
+            <button type="button" @click="openSkillModal('{{ $skill->slug }}', '{{ $skill->name }}', '{{ $skill->description }}')"
+                    class="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-indigo-500
+                           text-gray-300 hover:text-white text-sm px-3 py-2 rounded-lg transition-colors">
+                @if($skill->icon)
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.59L5.5 13.5h13l-3.591-3.092A2.25 2.25 0 0114.25 8.818V3.104a.75.75 0 00-.75-.75h-3.5a.75.75 0 00-.75.75z"/>
+                </svg>
+                @endif
+                {{ $skill->name }}
+            </button>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
     <!-- Input -->
     <div class="mt-4 border-t border-gray-800 pt-4">
         <form @submit.prevent="sendMessage()" class="flex gap-3 items-end">
@@ -87,7 +119,7 @@
                 x-model="input"
                 @keydown.enter.exact.prevent="sendMessage()"
                 @keydown.enter.shift.exact="input += '\n'"
-                placeholder="Écrivez votre message... (Entrée pour envoyer, Maj+Entrée pour aller à la ligne)"
+                placeholder="{{ __('app.chat_placeholder') }}"
                 rows="2"
                 class="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-500
                        focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
@@ -101,7 +133,30 @@
                 </svg>
             </button>
         </form>
-        <p class="text-xs text-gray-600 mt-1.5">Entrée pour envoyer · Maj+Entrée pour nouvelle ligne</p>
+        <p class="text-xs text-gray-600 mt-1.5">{{ __('app.enter_to_send') }}</p>
+    </div>
+
+    <!-- Skill modal -->
+    <div x-show="skillModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" x-transition.opacity>
+        <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md mx-4 shadow-xl" @click.outside="skillModalOpen = false">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-white font-semibold text-lg" x-text="skillModalName"></h3>
+                <button @click="skillModalOpen = false" class="text-gray-400 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <p class="text-gray-400 text-sm mb-4" x-text="skillModalDescription"></p>
+            <div id="skill-params-container" class="space-y-3 mb-4">
+                <!-- Dynamic param fields injected by JS -->
+            </div>
+            <div class="flex gap-3 justify-end">
+                <button @click="skillModalOpen = false" class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">{{ __('app.cancel') }}</button>
+                <button @click="dispatchSkill()" :disabled="skillDispatching"
+                        class="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                    {{ __('app.launch') }}
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -116,6 +171,12 @@ function chatInterface(conversationId, lastMessageId, hasPending) {
         waiting: hasPending,
         newMessages: [],
         pollingInterval: null,
+        showSkills: true,
+        skillModalOpen: false,
+        skillModalSlug: '',
+        skillModalName: '',
+        skillModalDescription: '',
+        skillDispatching: false,
 
         scrollToBottom() {
             this.$nextTick(() => {
@@ -139,8 +200,14 @@ function chatInterface(conversationId, lastMessageId, hasPending) {
                 });
                 const data = await resp.json();
                 if (data.messages && data.messages.length) {
+                    // Replace optimistic (temp) messages with real ones from server
+                    this.newMessages = this.newMessages.filter(m => !String(m.id).startsWith('temp_'));
+
                     for (const msg of data.messages) {
-                        this.newMessages.push(msg);
+                        // Prevent duplicates
+                        if (!this.newMessages.some(m => m.id === msg.id)) {
+                            this.newMessages.push(msg);
+                        }
                         this.lastId = Math.max(this.lastId, msg.id);
                     }
                     const hasAgentResponse = data.messages.some(m => m.status === 'response' || m.status === 'error');
@@ -157,9 +224,9 @@ function chatInterface(conversationId, lastMessageId, hasPending) {
             this.sending = true;
             this.waiting = true;
 
-            // Optimistic: show user message immediately (don't update lastId — it's a fake temp ID)
+            const tempId = 'temp_' + Date.now();
             this.newMessages.push({
-                id: null,
+                id: tempId,
                 direction: 'in',
                 content,
                 status: 'done',
@@ -168,7 +235,7 @@ function chatInterface(conversationId, lastMessageId, hasPending) {
             this.scrollToBottom();
 
             try {
-                await fetch(`/employee/conversations/${this.conversationId}/messages`, {
+                const resp = await fetch(`/employee/conversations/${this.conversationId}/messages`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -177,10 +244,77 @@ function chatInterface(conversationId, lastMessageId, hasPending) {
                     },
                     body: JSON.stringify({ content })
                 });
+                if (resp.ok) this.poll();
             } catch (e) {
                 this.waiting = false;
             } finally {
                 this.sending = false;
+            }
+        },
+
+        openSkillModal(slug, name, description) {
+            this.skillModalSlug = slug;
+            this.skillModalName = name;
+            this.skillModalDescription = description;
+            this.skillModalOpen = true;
+
+            // Fetch skill params template from the API
+            fetch(`/employee/skills`, {
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+            }).then(r => r.json()).then(data => {
+                const skill = data.skills?.find(s => s.slug === slug);
+                const container = document.getElementById('skill-params-container');
+                container.innerHTML = '';
+                if (skill && skill.param_fields) {
+                    for (const field of skill.param_fields) {
+                        container.innerHTML += `
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">${field.label}</label>
+                                <input type="text" data-skill-param="${field.key}"
+                                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
+                                           focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="${field.placeholder || ''}">
+                            </div>`;
+                    }
+                }
+            });
+        },
+
+        async dispatchSkill() {
+            this.skillDispatching = true;
+            const params = {};
+            document.querySelectorAll('[data-skill-param]').forEach(input => {
+                params[input.dataset.skillParam] = input.value;
+            });
+
+            this.waiting = true;
+            this.skillModalOpen = false;
+
+            const tempId = 'temp_' + Date.now();
+            this.newMessages.push({
+                id: tempId,
+                direction: 'in',
+                content: `[Skill: ${this.skillModalName}]` + (Object.keys(params).length ? ' — ' + Object.entries(params).map(([k,v]) => `${k}: ${v}`).join(', ') : ''),
+                status: 'done',
+                created_at: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+            });
+            this.scrollToBottom();
+
+            try {
+                const resp = await fetch(`/employee/conversations/${this.conversationId}/skill`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ skill_slug: this.skillModalSlug, params })
+                });
+                if (resp.ok) this.poll();
+            } catch (e) {
+                this.waiting = false;
+            } finally {
+                this.skillDispatching = false;
             }
         },
     };

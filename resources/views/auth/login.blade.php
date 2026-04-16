@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr" class="h-full bg-gray-950">
+<html lang="{{ app()->getLocale() }}" class="h-full bg-gray-950">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connexion — SPQ</title>
+    <title>{{ __('app.login') }} — SPQ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
 </head>
@@ -18,12 +18,12 @@
                 </svg>
             </div>
             <h1 class="text-3xl font-bold text-white">SPQ</h1>
-            <p class="text-gray-400 mt-1">Plateforme de gestion d'agents IA</p>
+            <p class="text-gray-400 mt-1">{{ __('app.tagline') }}</p>
         </div>
 
         <!-- Card -->
         <div class="bg-gray-900 rounded-2xl shadow-2xl p-8 border border-gray-800">
-            <h2 class="text-xl font-semibold text-white mb-6">Connexion</h2>
+            <h2 class="text-xl font-semibold text-white mb-6">{{ __('app.login') }}</h2>
 
             @if (session('status'))
                 <div class="mb-4 p-3 bg-green-900/50 border border-green-700 rounded-lg text-green-300 text-sm">
@@ -34,7 +34,7 @@
             <form method="POST" action="{{ route('login.store') }}" class="space-y-5">
                 @csrf
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-1.5">Adresse email</label>
+                    <label class="block text-sm font-medium text-gray-300 mb-1.5">{{ __('app.email') }}</label>
                     <input type="email" name="email" value="{{ old('email') }}" required autofocus
                         class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white
                                placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
@@ -46,9 +46,9 @@
 
                 <div>
                     <div class="flex justify-between items-center mb-1.5">
-                        <label class="block text-sm font-medium text-gray-300">Mot de passe</label>
+                        <label class="block text-sm font-medium text-gray-300">{{ __('app.password') }}</label>
                         <a href="{{ route('password.request') }}" class="text-sm text-indigo-400 hover:text-indigo-300">
-                            Mot de passe oublié ?
+                            {{ __('app.forgot_password') }}
                         </a>
                     </div>
                     <input type="password" name="password" required
@@ -63,19 +63,19 @@
                 <div class="flex items-center">
                     <input type="checkbox" name="remember" id="remember"
                         class="w-4 h-4 text-indigo-600 bg-gray-800 border-gray-600 rounded focus:ring-indigo-500">
-                    <label for="remember" class="ml-2 text-sm text-gray-400">Se souvenir de moi</label>
+                    <label for="remember" class="ml-2 text-sm text-gray-400">{{ __('app.remember_me') }}</label>
                 </div>
 
                 <button type="submit"
                     class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-4 rounded-lg
                            transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900">
-                    Se connecter
+                    {{ __('app.sign_in') }}
                 </button>
             </form>
         </div>
 
         <p class="text-center text-gray-600 text-sm mt-6">
-            &copy; {{ date('Y') }} SPQ — Tous droits réservés
+            &copy; {{ date('Y') }} SPQ — {{ __('app.all_rights') }}
         </p>
     </div>
 </body>

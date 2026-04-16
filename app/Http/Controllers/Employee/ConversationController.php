@@ -20,7 +20,7 @@ class ConversationController extends Controller
     private function getMember(): ProjectMember
     {
         $member = auth()->user()->projectMembers()->with('agent.macMachine')->first();
-        abort_if(! $member, 403, 'Vous n\'êtes associé à aucun projet.');
+        abort_if(! $member, 403, __('app.no_project'));
         return $member;
     }
 
@@ -42,7 +42,7 @@ class ConversationController extends Controller
         $request->validate(['title' => 'nullable|string|max:255']);
 
         $conversation = $member->conversations()->create([
-            'title' => $request->get('title') ?: 'Nouvelle conversation du ' . now()->format('d/m/Y H:i'),
+            'title' => $request->get('title') ?: __('app.conversation_of', ['date' => now()->format('d/m/Y H:i')]),
         ]);
 
         return redirect()->route('employee.conversations.show', $conversation);
@@ -61,8 +61,9 @@ class ConversationController extends Controller
             ->where('direction', 'out')->whereIn('status', ['pending', 'processing'])->exists();
         $agent = $member->agent;
         $machine = $agent?->macMachine;
+        $skills = $agent?->skills()->where('is_active', true)->get() ?? collect();
 
-        return view('employee.conversations.show', compact('conversation', 'messages', 'hasPending', 'member', 'agent', 'machine'));
+        return view('employee.conversations.show', compact('conversation', 'messages', 'hasPending', 'member', 'agent', 'machine', 'skills'));
     }
 
     public function destroy(Conversation $conversation): RedirectResponse

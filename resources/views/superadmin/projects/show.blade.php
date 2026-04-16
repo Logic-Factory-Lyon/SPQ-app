@@ -8,6 +8,10 @@
     </div>
 @endsection
 @section('header-actions')
+    <a href="{{ route('admin.projects.hierarchy', $project) }}"
+       class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+        Hierarchy
+    </a>
     <a href="{{ route('admin.projects.clone', $project) }}"
        class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
         {{ __('app.clone_team') }}

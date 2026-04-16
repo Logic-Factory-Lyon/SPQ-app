@@ -112,6 +112,22 @@ class AgentCrudController extends Controller
 
     public function destroy(Agent $agent): RedirectResponse
     {
+        // Queue a destroy task if the agent has a machine and was initialized
+        if ($agent->mac_machine_id && $agent->status !== 'draft') {
+            AgentTask::create([
+                'agent_id'       => null, // agent will be deleted, so no FK ref
+                'mac_machine_id' => $agent->mac_machine_id,
+                'type'           => 'destroy',
+                'status'         => 'pending',
+                'payload'        => [
+                    'profile'       => $agent->profile,
+                    'name'          => $agent->name,
+                    'project_id'    => $agent->project_id ?? 0,
+                    'agent_id'      => $agent->id,
+                ],
+            ]);
+        }
+
         $agent->delete();
         return redirect()->route('admin.agents.index')
             ->with('success', __('app.agent_deleted'));

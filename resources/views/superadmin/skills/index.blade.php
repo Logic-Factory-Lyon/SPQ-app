@@ -1,14 +1,14 @@
 @extends('layouts.app')
-@section('title', 'Skills')
+@section('title', __('app.skills'))
 @section('header')
     <div class="flex items-center gap-2 text-sm text-gray-400">
-        <span class="text-white">Skills</span>
+        <span class="text-white">{{ __('app.skills') }}</span>
     </div>
 @endsection
 @section('header-actions')
     <a href="{{ route('admin.skills.create') }}"
        class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-        + Nouveau skill
+        {{ __('app.new_skill') }}
     </a>
 @endsection
 @section('content')
@@ -16,11 +16,11 @@
         <table class="w-full text-left">
             <thead>
                 <tr class="border-b border-gray-800">
-                    <th class="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Nom</th>
-                    <th class="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Catégorie</th>
-                    <th class="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Slug</th>
-                    <th class="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Agents</th>
-                    <th class="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Statut</th>
+                    <th class="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">{{ __('app.name_short') }}</th>
+                    <th class="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">{{ __('app.category') }}</th>
+                    <th class="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">{{ __('app.slug') }}</th>
+                    <th class="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">{{ __('app.agents_count') }}</th>
+                    <th class="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">{{ __('app.status') }}</th>
                     <th class="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide"></th>
                 </tr>
             </thead>
@@ -43,16 +43,16 @@
                     <td class="px-4 py-3 text-sm text-gray-400">{{ $skill->agents_count }}</td>
                     <td class="px-4 py-3">
                         @if($skill->is_active)
-                        <span class="text-xs bg-green-900/50 text-green-400 px-2 py-0.5 rounded">Actif</span>
+                        <span class="text-xs bg-green-900/50 text-green-400 px-2 py-0.5 rounded">{{ __('app.status_active') }}</span>
                         @else
-                        <span class="text-xs bg-gray-800 text-gray-500 px-2 py-0.5 rounded">Inactif</span>
+                        <span class="text-xs bg-gray-800 text-gray-500 px-2 py-0.5 rounded">{{ __('app.status_inactive') }}</span>
                         @endif
                     </td>
                     <td class="px-4 py-3 text-right">
-                        <a href="{{ route('admin.skills.edit', $skill) }}" class="text-sm text-indigo-400 hover:text-indigo-300">Modifier</a>
-                        <form method="POST" action="{{ route('admin.skills.destroy', $skill) }}" class="inline ml-2" onsubmit="return confirm('Supprimer ce skill ?')">
+                        <a href="{{ route('admin.skills.edit', $skill) }}" class="text-sm text-indigo-400 hover:text-indigo-300">{{ __('app.edit') }}</a>
+                        <form method="POST" action="{{ route('admin.skills.destroy', $skill) }}" class="inline ml-2" onsubmit="return confirm('{{ __("app.delete_skill_confirm") }}')">
                             @csrf @method('DELETE')
-                            <button type="submit" class="text-sm text-red-400 hover:text-red-300">Supprimer</button>
+                            <button type="submit" class="text-sm text-red-400 hover:text-red-300">{{ __('app.delete') }}</button>
                         </form>
                     </td>
                 </tr>

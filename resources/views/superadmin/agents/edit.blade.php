@@ -159,7 +159,7 @@
                 {{ __('app.cancel') }}
             </a>
             <form method="POST" action="{{ route('admin.agents.destroy', $agent) }}" class="ml-auto"
-                  onsubmit="return confirm('Delete this agent?')">
+                  onsubmit="return confirm('Supprimer cet agent ? Le workspace OpenClaw et les fichiers seront également supprimés.')">
                 @csrf @method('DELETE')
                 <button type="submit" class="bg-gray-800 hover:bg-red-900 text-gray-400 hover:text-red-400 text-sm px-4 py-2 rounded-lg transition-colors border border-gray-700">
                     {{ __('app.delete') }}

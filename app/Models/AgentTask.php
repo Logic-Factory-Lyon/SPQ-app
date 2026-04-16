@@ -16,7 +16,10 @@ class AgentTask extends Model
         'processed_at' => 'datetime',
     ];
 
-    public function agent(): BelongsTo
+    public function agent(): ?BelongsTo
+    {
+        return $this->belongsTo(Agent::class);
+    }
     {
         return $this->belongsTo(Agent::class);
     }

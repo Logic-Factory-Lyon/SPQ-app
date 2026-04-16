@@ -60,9 +60,28 @@ class ProjectController extends Controller
 
     public function show(Project $project): View
     {
-        $project->load(['client', 'macMachines.agents', 'members.user', 'members.agent']);
-        $telegramAgents = $project->telegramAgents()->get();
+        $project->load(['client', 'macMachines.agents.skills', 'macMachines.agents.parentAgent', 'macMachines.agents.childAgents', 'members.user', 'members.agent']);
+        $telegramAgents = $project->telegramAgents()->with(['parentAgent', 'childAgents', 'skills'])->get();
         return view('superadmin.projects.show', compact('project', 'telegramAgents'));
+    }
+
+    public function hierarchy(Project $project): View
+    {
+        $project->load([
+            'macMachines.agents.parentAgent',
+            'macMachines.agents.childAgents.skills',
+            'macMachines.agents.skills',
+            'members.user',
+            'members.agent',
+        ]);
+        $telegramAgents = $project->telegramAgents()->with(['parentAgent', 'childAgents', 'skills'])->get();
+
+        // Build tree: root agents (no parent) with children
+        $allAgents = $project->macMachines->flatMap->agents->merge($telegramAgents);
+        $rootAgents = $allAgents->filter(fn($a) => $a->parent_agent_id === null);
+        $agentMembers = $project->members->filter(fn($m) => $m->agent_id !== null)->groupBy('agent_id');
+
+        return view('superadmin.projects.hierarchy', compact('project', 'rootAgents', 'allAgents', 'agentMembers'));
     }
 
     public function edit(Project $project): View

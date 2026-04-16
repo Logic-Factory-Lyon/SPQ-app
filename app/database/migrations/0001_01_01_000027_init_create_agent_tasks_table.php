@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('agent_tasks', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('agent_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('agent_id')->nullable()->constrained()->cascadeOnDelete();
             $table->foreignId('mac_machine_id')->constrained()->cascadeOnDelete();
             $table->enum('type', ['initialize', 'resync', 'destroy']);
             $table->enum('status', ['pending', 'processing', 'done', 'error'])->default('pending');

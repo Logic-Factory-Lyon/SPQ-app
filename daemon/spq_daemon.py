@@ -29,7 +29,7 @@ HEARTBEAT_INTERVAL = 30   # seconds between heartbeats
 OPENCLAW_BINARY    = 'openclaw'
 OPENCLAW_TIMEOUT   = 300  # 5 minutes max per task
 SPQ_BASE_URL       = 'https://spq.app'
-DAEMON_VERSION     = 4     # increment when breaking changes are deployed
+DAEMON_VERSION     = 5     # increment when breaking changes are deployed
 SELF_UPDATE_INTERVAL = 300  # check for updates every 5 minutes
 
 # ── Logging ──────────────────────────────────────────────────────────────────
@@ -137,9 +137,7 @@ def run_openclaw(profile: str, content: str) -> tuple[Optional[str], Optional[st
 def check_self_update(token: str) -> bool:
     """Download latest daemon script from SPQ and restart if version is newer."""
     log.info('Checking for daemon update...')
-    resp = api_request('GET', '/daemon/script', token)
-    # api_request returns dict on JSON, but /daemon/script returns plain text
-    # So we fetch it directly
+    # /daemon/script returns plain text, not JSON — fetch directly
     url = f'{SPQ_BASE_URL}/daemon/script'
     req = urllib.request.Request(url)
     req.add_header('User-Agent', 'SPQ-Daemon/1.0')
@@ -291,6 +289,64 @@ def initialize_agent(task: dict) -> tuple[Optional[str], Optional[str]]:
         return None, f'Unexpected error: {e}'
 
 
+def destroy_agent(task: dict) -> tuple[Optional[str], Optional[str]]:
+    """
+    Destroy an agent: delete from OpenClaw, remove workspace files.
+    task['payload'] contains: profile, project_id, agent_id
+    """
+    payload = task.get('payload', {})
+    profile = payload.get('profile', '')
+    project_id = payload.get('project_id', 0)
+    agent_id = payload.get('agent_id', 0)
+    name = payload.get('name', 'unknown')
+
+    if not profile:
+        return None, 'No profile specified for agent destruction.'
+
+    pid = project_id if project_id else 0
+    workspace_path = f'~/.openclaw/spqapp/{pid}/agents/workspace-{agent_id}'
+    workspace = expand_path(workspace_path)
+
+    try:
+        log.info(f'Destroying agent "{name}" (profile={profile})')
+
+        # 1. Delete from OpenClaw CLI
+        oc_deleted = False
+        try:
+            r = subprocess.run(
+                [OPENCLAW_BINARY, 'agents', 'delete', profile, '--force', '--json'],
+                capture_output=True, text=True, timeout=15
+            )
+            if r.returncode == 0:
+                oc_deleted = True
+                log.info(f'Agent "{profile}" deleted from OpenClaw')
+            else:
+                error_msg = r.stderr.strip() or f'Exit code {r.returncode}'
+                log.warning(f'Failed to delete agent from OpenClaw: {error_msg}')
+        except Exception as e:
+            log.warning(f'Error deleting agent from OpenClaw: {e}')
+
+        # 2. Remove workspace directory
+        ws_removed = False
+        if os.path.isdir(workspace):
+            shutil.rmtree(workspace)
+            ws_removed = True
+            log.info(f'Removed workspace: {workspace}')
+        else:
+            log.info(f'Workspace not found (already removed): {workspace}')
+
+        result_parts = [
+            f'OpenClaw agent: {"deleted" if oc_deleted else "not found or failed"}',
+            f'Workspace: {"removed" if ws_removed else "not found"}',
+        ]
+
+        log.info(f'Agent "{name}" destruction complete')
+        return '\n'.join(result_parts), None
+
+    except Exception as e:
+        return None, f'Error destroying agent: {e}'
+
+
 def process_tasks(token: str):
     """Poll and process agent initialization tasks."""
     resp = api_request('GET', '/api/mac/tasks/pending', token)
@@ -308,8 +364,7 @@ def process_tasks(token: str):
         if task_type in ('initialize', 'resync'):
             result, error = initialize_agent(task)
         elif task_type == 'destroy':
-            # Future: clean up workspace
-            result, error = 'Destroy not yet implemented.', None
+            result, error = destroy_agent(task)
         else:
             result, error = None, f'Unknown task type: {task_type}'
 

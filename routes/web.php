@@ -81,6 +81,7 @@ Route::middleware(['auth', 'role:superadmin'])
         Route::get('clients/{client}/projects/create', [ProjectController::class, 'create'])->name('clients.projects.create');
         Route::post('clients/{client}/projects', [ProjectController::class, 'store'])->name('clients.projects.store');
         Route::resource('projects', ProjectController::class)->except(['create', 'store']);
+        Route::get('projects/{project}/hierarchy', [ProjectController::class, 'hierarchy'])->name('projects.hierarchy');
 
         // Users
         Route::resource('users', UserController::class)->except(['create', 'store']);

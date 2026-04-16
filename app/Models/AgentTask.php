@@ -20,9 +20,6 @@ class AgentTask extends Model
     {
         return $this->belongsTo(Agent::class);
     }
-    {
-        return $this->belongsTo(Agent::class);
-    }
 
     public function macMachine(): BelongsTo
     {

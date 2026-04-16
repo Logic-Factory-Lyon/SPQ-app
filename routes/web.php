@@ -18,6 +18,7 @@ use App\Http\Controllers\Superadmin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Superadmin\ProjectMemberController as AdminMemberController;
 use App\Http\Controllers\Superadmin\EmailTemplateController;
 use App\Http\Controllers\Superadmin\AgentController;
+use App\Http\Controllers\Superadmin\AgentCrudController;
 use App\Http\Controllers\Superadmin\SkillController;
 use App\Http\Controllers\Employee\SkillController as EmployeeSkillController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboard;
@@ -87,6 +88,7 @@ Route::middleware(['auth', 'role:superadmin'])
         // Mac Machines
         Route::resource('mac-machines', MacMachineController::class)->except(['create', 'store', 'index']);
         Route::post('mac-machines/{macMachine}/regenerate-token', [MacMachineController::class, 'regenerateToken'])->name('mac-machines.regenerate-token');
+        Route::post('mac-machines/{macMachine}/restart-daemon', [MacMachineController::class, 'restartDaemon'])->name('mac-machines.restart-daemon');
         Route::get('mac-machines/{macMachine}/launcher', [MacMachineController::class, 'downloadLauncher'])->name('mac-machines.launcher');
         Route::get('mac-machines/{macMachine}/setup-guide', [MacMachineController::class, 'downloadSetupGuide'])->name('mac-machines.setup-guide');
 
@@ -137,6 +139,15 @@ Route::middleware(['auth', 'role:superadmin'])
         Route::resource('skills', SkillController::class);
         Route::post('projects/{project}/agents/{agent}/skills/{skill}', [SkillController::class, 'attach'])->name('projects.agents.skills.attach');
         Route::delete('projects/{project}/agents/{agent}/skills/{skill}', [SkillController::class, 'detach'])->name('projects.agents.skills.detach');
+
+        // Agent CRUD (standalone)
+        Route::resource('agents', AgentCrudController::class)->except(['show']);
+        Route::post('agents/{agent}/initialize', [AgentCrudController::class, 'initialize'])->name('agents.initialize');
+        Route::post('agents/{agent}/resync', [AgentCrudController::class, 'resync'])->name('agents.resync');
+
+        // Team cloning
+        Route::get('projects/{project}/clone', [ProjectController::class, 'showCloneForm'])->name('projects.clone');
+        Route::post('projects/{project}/clone', [ProjectController::class, 'clone']);
 
         // Email Templates
         Route::get('email-templates', [EmailTemplateController::class, 'index'])->name('email-templates.index');

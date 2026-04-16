@@ -8,6 +8,13 @@
     </div>
 @endsection
 @section('header-actions')
+    <form method="POST" action="{{ route('admin.mac-machines.restart-daemon', $macMachine) }}">
+        @csrf
+        <button type="submit" onclick="return confirm('Demander un redémarrage du daemon ? Il se mettra à jour automatiquement au prochain heartbeat.')"
+            class="bg-yellow-600 hover:bg-yellow-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+            ↺ Restart Daemon
+        </button>
+    </form>
     <a href="{{ route('admin.mac-machines.edit', $macMachine) }}"
        class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
         Modifier

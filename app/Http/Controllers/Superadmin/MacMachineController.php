@@ -190,16 +190,21 @@ TEXT;
         ]);
     }
 
+    public function restartDaemon(MacMachine $macMachine): RedirectResponse
+    {
+        $meta = $macMachine->metadata ?? [];
+        $meta['daemon_restart'] = true;
+        $macMachine->update(['metadata' => $meta]);
+
+        return redirect()->route('admin.mac-machines.show', $macMachine)
+            ->with('success', 'Redémarrage du daemon demandé. Le daemon se mettra à jour automatiquement au prochain heartbeat.');
+    }
+
     public function downloadLauncher(MacMachine $macMachine): \Symfony\Component\HttpFoundation\Response
     {
         $daemonScript = file_get_contents(base_path('daemon/spq_daemon.py'));
         $machineName  = $macMachine->name;
         $token        = $macMachine->token;
-
-        // DB credentials embedded in the launcher
-        $dbName = config('database.connections.mysql.database');
-        $dbUser = config('database.connections.mysql.username');
-        $dbPass = config('database.connections.mysql.password');
 
         $launcher = <<<BASH
 #!/bin/bash
@@ -212,14 +217,16 @@ set -e
 DIR="\$HOME/.spq"
 mkdir -p "\$DIR"
 
+# Kill any existing daemon process
+echo "Arrêt du daemon existant..."
+pkill -f "spq_daemon.py" 2>/dev/null || true
+sleep 1
+
 # Écriture du daemon (version embarquée)
 cat > "\$DIR/spq_daemon.py" << 'SPQ_DAEMON_EOF'
 {$daemonScript}
 SPQ_DAEMON_EOF
-
-# Installer/mettre à jour pymysql + cryptography (requis pour MySQL 8.0)
-echo "Mise à jour des dépendances Python..."
-python3 -m pip install --upgrade pymysql cryptography 2>&1 | grep -v "already satisfied"
+chmod +x "\$DIR/spq_daemon.py"
 
 clear
 echo "╔══════════════════════════════════════════╗"
@@ -227,21 +234,14 @@ echo "║  SPQ Daemon — {$machineName}"
 echo "╚══════════════════════════════════════════╝"
 echo ""
 echo "  Dossier  : \$DIR"
-echo "  Tunnel   : ssh.spq.app:18765 → MySQL:3306"
+echo "  API      : https://spq.app"
 echo ""
 echo "  Logs en temps réel ci-dessous."
 echo "  Ctrl+C pour arrêter proprement."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-python3 "\$DIR/spq_daemon.py" \
-    --token "{$token}" \
-    --ssh-host "ssh.spq.app" \
-    --ssh-port 18765 \
-    --ssh-user "u685-ubgnyznjtpvj" \
-    --db-name "{$dbName}" \
-    --db-user "{$dbUser}" \
-    --db-pass "{$dbPass}"
+python3 "\$DIR/spq_daemon.py" --token "{$token}"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

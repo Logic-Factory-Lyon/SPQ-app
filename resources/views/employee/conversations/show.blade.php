@@ -102,7 +102,7 @@
                 @if($skill->icon)
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="{{ \Illuminate\Support\Heroicons::path($skill->icon) ?? 'M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.59L5.5 13.5h13l-3.591-3.092A2.25 2.25 0 0114.25 8.818V3.104a.75.75 0 00-.75-.75h-3.5a.75.75 0 00-.75.75z' }}"/>
+                          d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.59L5.5 13.5h13l-3.591-3.092A2.25 2.25 0 0114.25 8.818V3.104a.75.75 0 00-.75-.75h-3.5a.75.75 0 00-.75.75z"/>
                 </svg>
                 @endif
                 {{ $skill->name }}

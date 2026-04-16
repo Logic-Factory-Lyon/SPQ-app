@@ -139,7 +139,7 @@ return [
     'role_superadmin' => 'Superadmin',
     'role_client'     => 'Client',
     'role_manager'    => 'Manager',
-    'role_employee'   => 'Employé',
+    'role_employee'   => 'Membre',
 
     // ── Agent management ───────────────────────────────────────────────────
     'agents'                    => 'Agents OpenClaw',
@@ -517,7 +517,7 @@ return [
     'see_all_conversations'   => 'Voir toutes les conversations →',
     'team_conversations_title'=> 'Conversations de l\'équipe',
     'no_team_conversations'   => 'Aucun membre de l\'équipe n\'a encore démarré de conversation.',
-    'employee'                => 'Employé',
+    'employee'                => 'Membre',
     'last_message'            => 'Dernier message',
     'agent'                   => 'Agent',
     'no_agent_assigned'       => 'Aucun agent assigné',

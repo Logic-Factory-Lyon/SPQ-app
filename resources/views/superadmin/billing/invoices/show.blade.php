@@ -1,15 +1,15 @@
 @extends('layouts.app')
-@section('title', 'Facture ' . $invoice->number)
+@section('title', __('app.invoice') . ' ' . $invoice->number)
 @section('header-actions')
     <div class="flex items-center gap-2">
         <a href="{{ route('admin.invoices.downloadPdf', $invoice) }}" target="_blank"
            class="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-            Télécharger PDF
+            {{ __('app.download_pdf') }}
         </a>
         @if($invoice->isEditable())
             <a href="{{ route('admin.invoices.edit', $invoice) }}"
                class="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-                Modifier
+                {{ __('app.edit') }}
             </a>
         @endif
         @if($invoice->status === 'draft')
@@ -17,24 +17,24 @@
                 @csrf
                 <button type="submit"
                     class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-                    Marquer envoyée
+                    {{ __('app.mark_sent') }}
                 </button>
             </form>
         @endif
         @if(in_array($invoice->status, ['sent', 'overdue']))
             <button x-data="" @click="$dispatch('open-modal', 'mark-paid')"
                 class="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-                Enregistrer paiement
+                {{ __('app.record_payment_short') }}
             </button>
         @endif
         @if($invoice->isDraft())
             <form method="POST" action="{{ route('admin.invoices.destroy', $invoice) }}"
-                onsubmit="return confirm('Supprimer cette facture ?')">
+                onsubmit="return confirm('{{ __("app.delete_invoice_confirm") }}')">
                 @csrf
                 @method('DELETE')
                 <button type="submit"
                     class="flex items-center gap-2 bg-red-900/50 hover:bg-red-800 text-red-400 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-                    Supprimer
+                    {{ __('app.delete') }}
                 </button>
             </form>
         @endif
@@ -44,7 +44,7 @@
 
 @php
     $sc = ['draft'=>'gray','sent'=>'blue','paid'=>'green','overdue'=>'red','cancelled'=>'gray','refunded'=>'orange'];
-    $sl = ['draft'=>'Brouillon','sent'=>'Envoyée','paid'=>'Payée','overdue'=>'En retard','cancelled'=>'Annulée','refunded'=>'Remboursée'];
+    $sl = ['draft'=>__('app.status_draft'),'sent'=>__('app.status_sent'),'paid'=>__('app.status_paid'),'overdue'=>__('app.status_overdue'),'cancelled'=>__('app.status_cancelled'),'refunded'=>__('app.status_refunded')];
 @endphp
 
 <div class="flex items-center gap-3 mb-6">
@@ -52,7 +52,7 @@
     <x-badge :color="$sc[$invoice->status] ?? 'gray'">{{ $sl[$invoice->status] ?? $invoice->status }}</x-badge>
     @if($invoice->quote)
         <span class="text-xs text-gray-500">
-            Depuis devis
+            {{ __('app.from_quote') }}
             <a href="{{ route('admin.quotes.show', $invoice->quote) }}" class="text-indigo-400 hover:text-indigo-300">
                 {{ $invoice->quote->number }}
             </a>
@@ -67,7 +67,7 @@
         <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
             <div class="grid grid-cols-2 gap-6">
                 <div>
-                    <p class="text-xs font-semibold text-gray-500 uppercase mb-2">Client</p>
+                    <p class="text-xs font-semibold text-gray-500 uppercase mb-2">{{ __('app.client') }}</p>
                     <p class="text-white font-semibold">{{ $invoice->client->name }}</p>
                     <p class="text-gray-400 text-sm">{{ $invoice->client->email }}</p>
                     @if($invoice->client->address)
@@ -76,19 +76,19 @@
                 </div>
                 <div class="space-y-3">
                     <div>
-                        <p class="text-xs font-semibold text-gray-500 uppercase mb-1">Date d'émission</p>
+                        <p class="text-xs font-semibold text-gray-500 uppercase mb-1">{{ __('app.issue_date') }}</p>
                         <p class="text-white">{{ $invoice->issue_date?->format('d/m/Y') ?? '—' }}</p>
                     </div>
                     <div>
-                        <p class="text-xs font-semibold text-gray-500 uppercase mb-1">Date d'échéance</p>
+                        <p class="text-xs font-semibold text-gray-500 uppercase mb-1">{{ __('app.due_date') }}</p>
                         <p class="{{ $invoice->isOverdue() ? 'text-red-400 font-semibold' : 'text-white' }}">
                             {{ $invoice->due_date?->format('d/m/Y') ?? '—' }}
-                            @if($invoice->isOverdue()) <span class="text-xs">(en retard)</span>@endif
+                            @if($invoice->isOverdue()) <span class="text-xs">({{ __('app.late') }})</span>@endif
                         </p>
                     </div>
                     @if($invoice->payment_terms)
                     <div>
-                        <p class="text-xs font-semibold text-gray-500 uppercase mb-1">Conditions</p>
+                        <p class="text-xs font-semibold text-gray-500 uppercase mb-1">{{ __('app.conditions') }}</p>
                         <p class="text-white text-sm">{{ $invoice->payment_terms }}</p>
                     </div>
                     @endif
@@ -99,16 +99,16 @@
         <!-- Lines -->
         <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
             <div class="px-5 py-4 border-b border-gray-800">
-                <h3 class="font-semibold text-white">Lignes de facture</h3>
+                <h3 class="font-semibold text-white">{{ __('app.invoice_lines') }}</h3>
             </div>
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-gray-800">
-                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3">Description</th>
-                        <th class="text-right text-xs font-semibold text-gray-500 uppercase px-5 py-3">Qté</th>
-                        <th class="text-right text-xs font-semibold text-gray-500 uppercase px-5 py-3">PU HT</th>
-                        <th class="text-right text-xs font-semibold text-gray-500 uppercase px-5 py-3">TVA</th>
-                        <th class="text-right text-xs font-semibold text-gray-500 uppercase px-5 py-3">Total TTC</th>
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3">{{ __('app.description') }}</th>
+                        <th class="text-right text-xs font-semibold text-gray-500 uppercase px-5 py-3">{{ __('app.qty_short') }}</th>
+                        <th class="text-right text-xs font-semibold text-gray-500 uppercase px-5 py-3">{{ __('app.unit_price_ht_short') }}</th>
+                        <th class="text-right text-xs font-semibold text-gray-500 uppercase px-5 py-3">{{ __('app.vat') }}</th>
+                        <th class="text-right text-xs font-semibold text-gray-500 uppercase px-5 py-3">{{ __('app.total_ttc') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-800">
@@ -126,15 +126,15 @@
             <div class="px-5 py-4 border-t border-gray-800 flex justify-end">
                 <div class="w-56 space-y-2 text-sm">
                     <div class="flex justify-between text-gray-400">
-                        <span>Total HT</span>
+                        <span>{{ __('app.total_ht') }}</span>
                         <span>{{ number_format($invoice->total_ht, 2, ',', ' ') }} €</span>
                     </div>
                     <div class="flex justify-between text-gray-400">
-                        <span>TVA</span>
+                        <span>{{ __('app.vat') }}</span>
                         <span>{{ number_format($invoice->total_vat, 2, ',', ' ') }} €</span>
                     </div>
                     <div class="flex justify-between text-white font-bold text-base border-t border-gray-700 pt-2">
-                        <span>Total TTC</span>
+                        <span>{{ __('app.total_ttc') }}</span>
                         <span>{{ number_format($invoice->total_ttc, 2, ',', ' ') }} €</span>
                     </div>
                 </div>
@@ -145,21 +145,21 @@
         @if($invoice->payments->isNotEmpty())
         <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-                <h3 class="font-semibold text-white">Paiements reçus</h3>
+                <h3 class="font-semibold text-white">{{ __('app.payments_received_title') }}</h3>
             </div>
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-gray-800">
-                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3">Date</th>
-                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3">Méthode</th>
-                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3">Référence</th>
-                        <th class="text-right text-xs font-semibold text-gray-500 uppercase px-5 py-3">Montant</th>
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3">{{ __('app.date') }}</th>
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3">{{ __('app.method') }}</th>
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3">{{ __('app.reference') }}</th>
+                        <th class="text-right text-xs font-semibold text-gray-500 uppercase px-5 py-3">{{ __('app.amount') }}</th>
                         <th class="px-5 py-3"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-800">
                     @php
-                        $methodLabels = ['stripe'=>'Stripe','bank_transfer'=>'Virement','cheque'=>'Chèque','cash'=>'Espèces','other'=>'Autre'];
+                        $methodLabels = ['stripe'=>__('app.method_stripe'),'bank_transfer'=>__('app.method_bank_transfer'),'cheque'=>__('app.method_cheque'),'cash'=>__('app.method_cash'),'other'=>__('app.method_other')];
                     @endphp
                     @foreach($invoice->payments as $payment)
                     <tr>
@@ -169,10 +169,10 @@
                         <td class="px-5 py-3 text-right text-green-400 font-semibold">{{ number_format($payment->amount, 2, ',', ' ') }} €</td>
                         <td class="px-5 py-3 text-right">
                             <form method="POST" action="{{ route('admin.payments.destroy', $payment) }}"
-                                onsubmit="return confirm('Annuler ce paiement ?')">
+                                onsubmit="return confirm('{{ __("app.cancel_payment_confirm") }}')">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="text-red-500 hover:text-red-400 text-xs">Annuler</button>
+                                <button type="submit" class="text-red-500 hover:text-red-400 text-xs">{{ __('app.cancel_payment') }}</button>
                             </form>
                         </td>
                     </tr>
@@ -186,7 +186,7 @@
         @if($invoice->creditNotes->isNotEmpty())
         <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
             <div class="px-5 py-4 border-b border-gray-800">
-                <h3 class="font-semibold text-white">Avoirs liés</h3>
+                <h3 class="font-semibold text-white">{{ __('app.related_credit_notes') }}</h3>
             </div>
             <div class="divide-y divide-gray-800">
                 @foreach($invoice->creditNotes as $cn)
@@ -197,7 +197,7 @@
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="text-orange-400 font-semibold">- {{ number_format($cn->total_ttc, 2, ',', ' ') }} €</span>
-                        <a href="{{ route('admin.credit-notes.show', $cn) }}" class="text-indigo-400 hover:text-indigo-300 text-sm">Voir →</a>
+                        <a href="{{ route('admin.credit-notes.show', $cn) }}" class="text-indigo-400 hover:text-indigo-300 text-sm">{{ __('app.see') }} →</a>
                     </div>
                 </div>
                 @endforeach
@@ -207,7 +207,7 @@
 
         @if($invoice->notes)
         <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
-            <p class="text-xs font-semibold text-gray-500 uppercase mb-2">Notes</p>
+            <p class="text-xs font-semibold text-gray-500 uppercase mb-2">{{ __('app.notes') }}</p>
             <p class="text-gray-300 text-sm whitespace-pre-wrap">{{ $invoice->notes }}</p>
         </div>
         @endif
@@ -216,15 +216,15 @@
     <!-- Sidebar -->
     <div class="space-y-4">
         <div class="bg-gray-900 rounded-xl border border-gray-800 p-5">
-            <p class="text-xs font-semibold text-gray-500 uppercase mb-3">Récapitulatif</p>
+            <p class="text-xs font-semibold text-gray-500 uppercase mb-3">{{ __('app.recap') }}</p>
             <div class="space-y-3">
                 <div>
-                    <p class="text-xs text-gray-500">Total TTC</p>
+                    <p class="text-xs text-gray-500">{{ __('app.total_ttc') }}</p>
                     <p class="text-2xl font-bold text-white">{{ number_format($invoice->total_ttc, 2, ',', ' ') }} €</p>
                 </div>
                 @if($invoice->remaining_balance > 0)
                 <div class="border-t border-gray-800 pt-3">
-                    <p class="text-xs text-gray-500">Solde restant dû</p>
+                    <p class="text-xs text-gray-500">{{ __('app.remaining_due') }}</p>
                     <p class="text-xl font-bold text-red-400">{{ number_format($invoice->remaining_balance, 2, ',', ' ') }} €</p>
                 </div>
                 @elseif($invoice->status === 'paid')
@@ -232,7 +232,7 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                     </svg>
-                    Facture soldée
+                    {{ __('app.invoice_settled') }}
                 </div>
                 @endif
             </div>
@@ -240,14 +240,14 @@
 
         @if(in_array($invoice->status, ['sent', 'overdue']))
         <div class="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-3">
-            <p class="text-xs font-semibold text-gray-500 uppercase">Enregistrer un paiement</p>
+            <p class="text-xs font-semibold text-gray-500 uppercase">{{ __('app.record_payment') }}</p>
             <a href="{{ route('admin.payments.create', $invoice) }}"
                class="flex items-center justify-center gap-2 w-full bg-green-700 hover:bg-green-600 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors">
-                Nouveau paiement
+                {{ __('app.new_payment_btn') }}
             </a>
             <a href="{{ route('admin.credit-notes.create', $invoice) }}"
                class="flex items-center justify-center gap-2 w-full bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors">
-                Créer un avoir
+                {{ __('app.create_credit_note') }}
             </a>
         </div>
         @endif
@@ -255,7 +255,7 @@
         <div class="bg-gray-900 rounded-xl border border-gray-800 p-5">
             <a href="{{ route('admin.invoices.downloadPdf', $invoice) }}" target="_blank"
                class="flex items-center justify-center gap-2 w-full bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors">
-                Télécharger PDF
+                {{ __('app.download_pdf') }}
             </a>
         </div>
     </div>
@@ -266,45 +266,45 @@
 <div x-data="{ open: false }" @open-modal.window="open = ($event.detail === 'mark-paid')" x-show="open" x-cloak
      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
     <div @click.away="open = false" class="bg-gray-900 rounded-2xl border border-gray-800 p-6 w-full max-w-md">
-        <h3 class="text-white font-semibold text-lg mb-4">Enregistrer un paiement</h3>
+        <h3 class="text-white font-semibold text-lg mb-4">{{ __('app.record_payment') }}</h3>
         <form method="POST" action="{{ route('admin.invoices.markPaid', $invoice) }}">
             @csrf
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm text-gray-400 mb-1.5">Montant (€)</label>
+                    <label class="block text-sm text-gray-400 mb-1.5">{{ __('app.amount_eur') }}</label>
                     <input type="number" name="amount" step="0.01" min="0.01"
                         value="{{ $invoice->remaining_balance }}"
                         class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
                 <div>
-                    <label class="block text-sm text-gray-400 mb-1.5">Méthode *</label>
+                    <label class="block text-sm text-gray-400 mb-1.5">{{ __('app.method') }} *</label>
                     <select name="method" required
                         class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="bank_transfer">Virement bancaire</option>
-                        <option value="stripe">Stripe</option>
-                        <option value="cheque">Chèque</option>
-                        <option value="cash">Espèces</option>
-                        <option value="other">Autre</option>
+                        <option value="bank_transfer">{{ __('app.method_bank_transfer') }}</option>
+                        <option value="stripe">{{ __('app.method_stripe') }}</option>
+                        <option value="cheque">{{ __('app.method_cheque') }}</option>
+                        <option value="cash">{{ __('app.method_cash') }}</option>
+                        <option value="other">{{ __('app.method_other') }}</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm text-gray-400 mb-1.5">Date de paiement</label>
+                    <label class="block text-sm text-gray-400 mb-1.5">{{ __('app.payment_date') }}</label>
                     <input type="date" name="paid_at" value="{{ now()->toDateString() }}"
                         class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
                 <div>
-                    <label class="block text-sm text-gray-400 mb-1.5">Référence</label>
-                    <input type="text" name="reference" placeholder="N° de virement, etc."
+                    <label class="block text-sm text-gray-400 mb-1.5">{{ __('app.reference') }}</label>
+                    <input type="text" name="reference" placeholder="{{ __('app.reference_placeholder') }}"
                         class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
             </div>
             <div class="flex gap-3 mt-6">
                 <button type="submit" class="flex-1 bg-green-600 hover:bg-green-500 text-white font-semibold py-2.5 rounded-lg transition-colors">
-                    Enregistrer
+                    {{ __('app.save') }}
                 </button>
                 <button type="button" @click="open = false"
                     class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-2.5 rounded-lg transition-colors">
-                    Annuler
+                    {{ __('app.cancel') }}
                 </button>
             </div>
         </form>

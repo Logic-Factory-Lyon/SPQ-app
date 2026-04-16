@@ -1,27 +1,27 @@
 @extends('layouts.app')
-@section('title', 'Paiements')
+@section('title', __('app.payments'))
 @section('content')
-    <x-page-header title="Paiements reçus" />
+    <x-page-header title="{{ __('app.payments_received') }}" />
 
     @if($payments->isEmpty())
-        <x-empty-state title="Aucun paiement" description="Les paiements enregistrés apparaîtront ici." />
+        <x-empty-state title="{{ __('app.no_payment') }}" description="{{ __('app.no_payment_desc') }}" />
     @else
         <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-gray-800">
-                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3">Date</th>
-                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3 hidden md:table-cell">Client</th>
-                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3">Facture</th>
-                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3 hidden lg:table-cell">Méthode</th>
-                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3 hidden lg:table-cell">Référence</th>
-                        <th class="text-right text-xs font-semibold text-gray-500 uppercase px-5 py-3">Montant</th>
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3">{{ __('app.date') }}</th>
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3 hidden md:table-cell">{{ __('app.clients') }}</th>
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3">{{ __('app.invoice') }}</th>
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3 hidden lg:table-cell">{{ __('app.method') }}</th>
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3 hidden lg:table-cell">{{ __('app.reference') }}</th>
+                        <th class="text-right text-xs font-semibold text-gray-500 uppercase px-5 py-3">{{ __('app.amount') }}</th>
                         <th class="px-5 py-3"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-800">
                     @php
-                        $methodLabels = ['stripe'=>'Stripe','bank_transfer'=>'Virement','cheque'=>'Chèque','cash'=>'Espèces','other'=>'Autre'];
+                        $methodLabels = ['stripe'=>__('app.method_stripe'),'bank_transfer'=>__('app.method_bank_transfer'),'cheque'=>__('app.method_cheque'),'cash'=>__('app.method_cash'),'other'=>__('app.method_other')];
                     @endphp
                     @foreach($payments as $payment)
                     <tr class="hover:bg-gray-800/50 transition-colors">
@@ -42,10 +42,10 @@
                         <td class="px-5 py-4 text-right text-green-400 font-semibold">{{ number_format($payment->amount, 2, ',', ' ') }} €</td>
                         <td class="px-5 py-4 text-right">
                             <form method="POST" action="{{ route('admin.payments.destroy', $payment) }}"
-                                onsubmit="return confirm('Annuler ce paiement ?')">
+                                onsubmit="return confirm('{{ __("app.cancel_payment_confirm") }}')">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="text-red-500 hover:text-red-400 text-xs">Annuler</button>
+                                <button type="submit" class="text-red-500 hover:text-red-400 text-xs">{{ __('app.cancel_payment') }}</button>
                             </form>
                         </td>
                     </tr>

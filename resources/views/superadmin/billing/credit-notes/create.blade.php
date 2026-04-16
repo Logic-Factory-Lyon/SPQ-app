@@ -1,7 +1,7 @@
 @extends('layouts.app')
-@section('title', 'Nouvel avoir — ' . $invoice->number)
+@section('title', __('app.new_credit_note_title') . ' — ' . $invoice->number)
 @section('content')
-<x-page-header title="Créer un avoir" subtitle="Facture : {{ $invoice->number }} — {{ $invoice->client->name }}" />
+<x-page-header title="{{ __('app.create_credit_note_title') }}" subtitle="{{ __('app.invoice_label', ['number' => $invoice->number, 'client' => $invoice->client->name]) }}" />
 
 <form method="POST" action="{{ route('admin.credit-notes.store', $invoice) }}"
       x-data="creditNoteBuilder({{ json_encode(old('lines', [['description'=>'','quantity'=>1,'unit_price_ht'=>0,'vat_rate_id'=>'']])) }})"
@@ -9,16 +9,16 @@
     @csrf
 
     <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
-        <h3 class="text-white font-semibold mb-4">Informations</h3>
+        <h3 class="text-white font-semibold mb-4">{{ __('app.information') }}</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label class="block text-sm text-gray-400 mb-1.5">Date d'émission</label>
+                <label class="block text-sm text-gray-400 mb-1.5">{{ __('app.issue_date') }}</label>
                 <input type="date" name="issue_date" value="{{ old('issue_date', now()->toDateString()) }}"
                     class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
             <div>
-                <label class="block text-sm text-gray-400 mb-1.5">Motif</label>
-                <input type="text" name="reason" value="{{ old('reason') }}" placeholder="Motif de l'avoir..."
+                <label class="block text-sm text-gray-400 mb-1.5">{{ __('app.reason') }}</label>
+                <input type="text" name="reason" value="{{ old('reason') }}" placeholder="{{ __('app.reason_placeholder') }}"
                     class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
         </div>
@@ -26,7 +26,7 @@
 
     <!-- Lines from original invoice (pre-fill helper) -->
     <div class="bg-gray-800/50 rounded-xl border border-gray-700 p-4 text-sm">
-        <p class="text-gray-400 font-semibold mb-2">Lignes de la facture originale (cliquer pour pré-remplir) :</p>
+        <p class="text-gray-400 font-semibold mb-2">{{ __('app.original_invoice_lines') }}</p>
         <div class="space-y-1">
             @foreach($invoice->lines as $line)
             <button type="button"
@@ -44,25 +44,25 @@
 
     <!-- Lines builder -->
     <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
-        <h3 class="text-white font-semibold mb-4">Lignes de l'avoir</h3>
+        <h3 class="text-white font-semibold mb-4">{{ __('app.credit_note_lines') }}</h3>
 
         <div class="space-y-3">
             <template x-for="(line, index) in lines" :key="index">
                 <div class="grid grid-cols-12 gap-2 items-start">
                     <div class="col-span-5">
                         <input type="text" :name="`lines[${index}][description]`" x-model="line.description"
-                            placeholder="Description *" required
+                            placeholder="{{ __('app.description') }} *" required
                             class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
                     <div class="col-span-2">
                         <input type="number" :name="`lines[${index}][quantity]`" x-model="line.quantity"
-                            min="0.01" step="0.01" placeholder="Qté *" required
+                            min="0.01" step="0.01" placeholder="{{ __('app.qty_short') }} *" required
                             @input="calcLine(index)"
                             class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
                     <div class="col-span-2">
                         <input type="number" :name="`lines[${index}][unit_price_ht]`" x-model="line.unit_price_ht"
-                            min="0" step="0.01" placeholder="PU HT *" required
+                            min="0" step="0.01" placeholder="{{ __('app.unit_price_ht_short') }} *" required
                             @input="calcLine(index)"
                             class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
@@ -70,7 +70,7 @@
                         <select :name="`lines[${index}][vat_rate_id]`" x-model="line.vat_rate_id"
                             @change="calcLine(index)" required
                             class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="">TVA *</option>
+                            <option value="">{{ __('app.vat') }} *</option>
                             @foreach($vatRates as $vr)
                                 <option value="{{ $vr->id }}" data-rate="{{ $vr->rate }}">{{ $vr->name }}</option>
                             @endforeach
@@ -94,21 +94,21 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
-            Ajouter une ligne
+            {{ __('app.add_line') }}
         </button>
 
         <div class="mt-6 flex justify-end">
             <div class="w-64 space-y-2 text-sm">
                 <div class="flex justify-between text-gray-400">
-                    <span>Total HT</span>
+                    <span>{{ __('app.total_ht') }}</span>
                     <span class="text-orange-300" x-text="'- ' + formatMoney(totalHT)"></span>
                 </div>
                 <div class="flex justify-between text-gray-400">
-                    <span>TVA</span>
+                    <span>{{ __('app.vat') }}</span>
                     <span class="text-orange-300" x-text="'- ' + formatMoney(totalVAT)"></span>
                 </div>
                 <div class="flex justify-between text-white font-bold text-base border-t border-gray-700 pt-2">
-                    <span>Total avoir TTC</span>
+                    <span>{{ __('app.total_credit_ttc') }}</span>
                     <span class="text-orange-400" x-text="'- ' + formatMoney(totalTTC)"></span>
                 </div>
             </div>
@@ -116,17 +116,17 @@
     </div>
 
     <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
-        <label class="block text-sm text-gray-400 mb-1.5">Notes</label>
+        <label class="block text-sm text-gray-400 mb-1.5">{{ __('app.notes') }}</label>
         <textarea name="notes" rows="3"
             class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">{{ old('notes') }}</textarea>
     </div>
 
     <div class="flex gap-3">
         <button type="submit" class="bg-orange-600 hover:bg-orange-500 text-white font-semibold px-6 py-2.5 rounded-lg transition-colors">
-            Créer l'avoir
+            {{ __('app.create_credit_note_btn') }}
         </button>
         <a href="{{ route('admin.invoices.show', $invoice) }}" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-6 py-2.5 rounded-lg transition-colors">
-            Annuler
+            {{ __('app.cancel') }}
         </a>
     </div>
 </form>

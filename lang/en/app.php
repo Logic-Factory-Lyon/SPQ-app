@@ -28,6 +28,11 @@ return [
     'billing'        => 'Billing',
     'quotes'         => 'Quotes',
     'invoices'       => 'Invoices',
+    'client'         => 'Client',
+    'quote'          => 'Quote',
+    'vat'            => 'VAT',
+    'qty_short'      => 'Qty',
+    'unit_price_ht_short' => 'Unit price',
 
     // Manager
     'team'           => 'Team',
@@ -454,6 +459,14 @@ return [
     // ── Email templates (partial) ─────────────────────────────────────────
     'no_footer_configured'    => 'No footer configured',
     'html_allowed_footer'     => 'HTML allowed. Displayed at the bottom of each email.',
+
+    'status_to_answer'       => 'To answer',
+    'status_awaiting_response'=> 'Awaiting your response',
+    'status_to_pay'           => 'To pay',
+    'payment_history'         => 'Payment history',
+    'amount_due'              => 'Amount due',
+    'amount_to_pay'           => 'Amount to pay',
+    'pay_invoice'             => 'Pay invoice :number',
 
     // ── Client portal ────────────────────────────────────────────────────
     'my_client_space'         => 'My client space',

@@ -22,7 +22,7 @@
         <div class="flex items-start justify-between gap-3">
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-1">
-                    <div class="w-2.5 h-2.5 rounded-full shrink-0 {{ $statusDots[$node->status] ?? $statusDots['draft'] }}"></div>
+                    <div class="w-2.5 h-2.5 rounded-full shrink-0 {{ $statusDots[$node->status] ?? $statusColors['draft'] }}"></div>
                     <span class="text-white font-semibold text-sm truncate">{{ $node->name }}</span>
                     @if($isTelegram)
                         <span class="text-blue-400 text-xs">Telegram</span>
@@ -63,7 +63,7 @@
             </div>
 
             {{-- Edit link --}}
-            <a href="{{ route('admin.agents.edit', $node) }}" class="text-xs text-gray-500 hover:text-indigo-400 shrink-0">edit</a>
+            <a href="{{ route('admin.agents.edit', $node) }}" class="text-xs text-gray-500 hover:text-indigo-400 shrink-0">{{ __('app.edit') }}</a>
         </div>
     </div>
 

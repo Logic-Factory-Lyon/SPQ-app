@@ -1,19 +1,19 @@
 @extends('layouts.app')
-@section('title', 'Conversations de l\'équipe')
+@section('title', __('app.team_conversations_title'))
 @section('content')
-    <x-page-header title="Conversations de l'équipe" />
+    <x-page-header title="{{ __('app.team_conversations_title') }}" />
 
     @if($conversations->isEmpty())
-        <x-empty-state title="Aucune conversation" description="Aucun membre de l'équipe n'a encore démarré de conversation." />
+        <x-empty-state title="{{ __('app.no_conversations') }}" description="{{ __('app.no_team_conversations') }}" />
     @else
         <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-gray-800">
-                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3">Employé</th>
-                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3">Conversation</th>
-                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3 hidden md:table-cell">Dernier message</th>
-                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3 hidden lg:table-cell">Date</th>
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3">{{ __('app.employee') }}</th>
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3">{{ __('app.conversations') }}</th>
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3 hidden md:table-cell">{{ __('app.last_message') }}</th>
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase px-5 py-3 hidden lg:table-cell">{{ __('app.date') }}</th>
                         <th class="px-5 py-3"></th>
                     </tr>
                 </thead>
@@ -29,7 +29,7 @@
                             </div>
                         </td>
                         <td class="px-5 py-4 text-white font-medium">
-                            {{ $conv->title ?: 'Conversation #' . $conv->id }}
+                            {{ $conv->title ?: __('app.conversations') . ' #' . $conv->id }}
                         </td>
                         <td class="px-5 py-4 text-gray-500 text-xs hidden md:table-cell max-w-xs truncate">
                             {{ $conv->latestMessage ? Str::limit($conv->latestMessage->content, 60) : '—' }}
@@ -39,7 +39,7 @@
                         </td>
                         <td class="px-5 py-4 text-right">
                             <a href="{{ route('manager.conversations.show', $conv) }}"
-                               class="text-indigo-400 hover:text-indigo-300 text-sm font-medium">Voir →</a>
+                               class="text-indigo-400 hover:text-indigo-300 text-sm font-medium">{{ __('app.see') }} →</a>
                         </td>
                     </tr>
                     @endforeach

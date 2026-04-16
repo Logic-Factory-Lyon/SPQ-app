@@ -1,23 +1,23 @@
 @extends('layouts.app')
-@section('title', 'Hierarchy — ' . $project->name)
+@section('title', __('app.agent_hierarchy') . ' — ' . $project->name)
 @section('header')
     <div class="flex items-center gap-2 text-sm text-gray-400">
-        <a href="{{ route('admin.projects.index') }}" class="hover:text-white">Projets</a>
+        <a href="{{ route('admin.projects.index') }}" class="hover:text-white">{{ __('app.projects') }}</a>
         <span>/</span>
         <a href="{{ route('admin.projects.show', $project) }}" class="hover:text-white">{{ $project->name }}</a>
         <span>/</span>
-        <span class="text-white">Hierarchy</span>
+        <span class="text-white">{{ __('app.agent_hierarchy') }}</span>
     </div>
 @endsection
 @section('content')
     <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold text-white">Agent Hierarchy</h1>
-        <a href="{{ route('admin.projects.show', $project) }}" class="text-sm text-gray-400 hover:text-white">&larr; Back to project</a>
+        <h1 class="text-2xl font-bold text-white">{{ __('app.agent_hierarchy') }}</h1>
+        <a href="{{ route('admin.projects.show', $project) }}" class="text-sm text-gray-400 hover:text-white">&larr; {{ __('app.back_to_project') }}</a>
     </div>
 
     @if($rootAgents->isEmpty())
         <div class="bg-gray-900 rounded-xl border border-gray-800 p-8 text-center">
-            <p class="text-gray-500">No agents configured for this project.</p>
+            <p class="text-gray-500">{{ __('app.no_agents_configured') }}</p>
         </div>
     @else
     <div class="bg-gray-900 rounded-xl border border-gray-800 p-6 overflow-x-auto">
@@ -29,13 +29,13 @@
         </div>
     </div>
 
-    {{-- Orphan agents (have parent_agent_id pointing to deleted/other agents) --}}
+    {{-- Orphan agents --}}
     @php
         $orphanAgents = $allAgents->filter(fn($a) => $a->parent_agent_id !== null && !$allAgents->contains('id', $a->parent_agent_id));
     @endphp
     @if($orphanAgents->isNotEmpty())
     <div class="mt-4 bg-gray-900 rounded-xl border border-yellow-800/50 p-6">
-        <h3 class="text-yellow-400 text-sm font-semibold mb-3">Orphan agents (parent not found)</h3>
+        <h3 class="text-yellow-400 text-sm font-semibold mb-3">{{ __('app.orphan_agents') }}</h3>
         <div class="space-y-2">
             @foreach($orphanAgents as $agent)
                 <div class="flex items-center gap-3 bg-gray-800 rounded-lg px-4 py-2">

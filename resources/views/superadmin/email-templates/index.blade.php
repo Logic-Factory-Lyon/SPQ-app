@@ -51,7 +51,7 @@
                         @if(isset($settings[$lang]) && $settings[$lang]->footer_html)
                             <p class="text-gray-500 text-xs mt-0.5 truncate max-w-md">{{ strip_tags($settings[$lang]->footer_html) }}</p>
                         @else
-                            <p class="text-gray-600 text-xs mt-0.5 italic">Aucun pied de page configuré</p>
+                            <p class="text-gray-600 text-xs mt-0.5 italic">{{ __('app.no_footer_configured') }}</p>
                         @endif
                     </div>
                     <a href="{{ route('admin.email-templates.footer.edit', $lang) }}"

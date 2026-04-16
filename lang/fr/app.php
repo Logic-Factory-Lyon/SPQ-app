@@ -28,6 +28,11 @@ return [
     'billing'        => 'Facturation',
     'quotes'         => 'Devis',
     'invoices'       => 'Factures',
+    'client'         => 'Client',
+    'quote'          => 'Devis',
+    'vat'            => 'TVA',
+    'qty_short'      => 'Qté',
+    'unit_price_ht_short' => 'PU HT',
 
     // Manager
     'team'           => 'Équipe',
@@ -454,6 +459,14 @@ return [
     // ── Email templates (partial) ─────────────────────────────────────────
     'no_footer_configured'    => 'Aucun pied de page configuré',
     'html_allowed_footer'     => 'HTML autorisé. Affiché en bas de chaque e-mail.',
+
+    'status_to_answer'       => 'À répondre',
+    'status_awaiting_response'=> 'En attente de votre réponse',
+    'status_to_pay'           => 'À payer',
+    'payment_history'         => 'Historique des paiements',
+    'amount_due'              => 'Montant dû',
+    'amount_to_pay'           => 'Montant à payer',
+    'pay_invoice'             => 'Payer la facture :number',
 
     // ── Client portal ────────────────────────────────────────────────────
     'my_client_space'         => 'Mon espace client',

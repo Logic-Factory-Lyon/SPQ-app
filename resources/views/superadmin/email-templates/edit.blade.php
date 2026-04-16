@@ -32,10 +32,10 @@
         <div class="flex justify-end gap-3">
             <a href="{{ route('admin.email-templates.index') }}"
                class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-                Annuler
+                {{ __('app.cancel') }}
             </a>
             <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors">
-                Enregistrer
+                {{ __('app.save') }}
             </button>
         </div>
     </form>

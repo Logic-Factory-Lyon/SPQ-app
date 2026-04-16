@@ -1,18 +1,18 @@
 @extends('layouts.app')
-@section('title', 'Dashboard Manager')
+@section('title', __('app.dashboard'))
 @section('content')
-    <x-page-header title="Tableau de bord"
-        subtitle="{{ $member ? 'Projet : ' . $member->project->name : '' }}" />
+    <x-page-header title="{{ __('app.dashboard') }}"
+        subtitle="{{ $member ? __('app.project_colon_label', ['name' => $member->project->name]) : '' }}" />
 
     <div class="grid lg:grid-cols-3 gap-4 mb-8">
-        <x-stat-card label="Membres de l'équipe" value="{{ $teamMembers->count() }}" />
-        <x-stat-card label="Messages en attente" value="{{ $pendingMessages }}" :color="$pendingMessages > 0 ? 'yellow' : 'green'" />
+        <x-stat-card label="{{ __('app.team_members') }}" value="{{ $teamMembers->count() }}" />
+        <x-stat-card label="{{ __('app.pending_messages_label') }}" value="{{ $pendingMessages }}" :color="$pendingMessages > 0 ? 'yellow' : 'green'" />
         @if($member)
         <div class="bg-gray-900 rounded-xl border border-gray-800 p-5">
-            <p class="text-sm text-gray-400 mb-2">Agents disponibles</p>
+            <p class="text-sm text-gray-400 mb-2">{{ __('app.agents_available') }}</p>
             <p class="text-white font-bold">{{ $agents->count() }}</p>
             <p class="text-xs text-gray-500 mt-1">
-                {{ $agents->filter(fn($a) => $a->macMachine?->status === 'online')->count() }} en ligne
+                {{ $agents->filter(fn($a) => $a->macMachine?->status === 'online')->count() }} {{ __('app.online_count_short') }}
             </p>
         </div>
         @endif
@@ -20,8 +20,8 @@
 
     <div class="bg-gray-900 rounded-xl border border-gray-800">
         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-            <h3 class="font-semibold text-white">Membres de l'équipe</h3>
-            <a href="{{ route('manager.conversations.index') }}" class="text-sm text-indigo-400 hover:text-indigo-300">Voir toutes les conversations →</a>
+            <h3 class="font-semibold text-white">{{ __('app.team_members') }}</h3>
+            <a href="{{ route('manager.conversations.index') }}" class="text-sm text-indigo-400 hover:text-indigo-300">{{ __('app.see_all_conversations') }}</a>
         </div>
         <div class="divide-y divide-gray-800">
             @forelse($teamMembers as $tm)

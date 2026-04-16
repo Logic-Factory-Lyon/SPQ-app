@@ -1,10 +1,10 @@
 @extends('layouts.app')
-@section('title', $conversation->title ?: 'Conversation #' . $conversation->id)
+@section('title', $conversation->title ?: __('app.conversations') . ' #' . $conversation->id)
 @section('header')
     <div class="flex items-center gap-2 text-sm text-gray-400">
-        <a href="{{ route('manager.conversations.index') }}" class="hover:text-white">Conversations</a>
+        <a href="{{ route('manager.conversations.index') }}" class="hover:text-white">{{ __('app.conversations') }}</a>
         <span>/</span>
-        <span class="text-white truncate max-w-xs">{{ $conversation->title ?: 'Conversation #' . $conversation->id }}</span>
+        <span class="text-white truncate max-w-xs">{{ $conversation->title ?: __('app.conversations') . ' #' . $conversation->id }}</span>
     </div>
 @endsection
 @section('content')
@@ -19,21 +19,21 @@
             <p class="text-white font-semibold">{{ $conversation->projectMember->user->name }}</p>
             <p class="text-xs text-gray-500">
                 @php $ag = $conversation->projectMember->agent; @endphp
-                Agent : {{ $ag?->name ?? 'Aucun agent assigné' }}
+                {{ __('app.agent') }} : {{ $ag?->name ?? __('app.no_agent_assigned') }}
                 @if($ag?->isTelegram()) <span class="text-blue-400 ml-1">• Telegram</span>@endif
             </p>
         </div>
         <div class="ml-auto text-right">
-            <p class="text-xs text-gray-500">Démarrée</p>
+            <p class="text-xs text-gray-500">{{ __('app.started') }}</p>
             <p class="text-sm text-gray-400">{{ $conversation->created_at->format('d/m/Y H:i') }}</p>
         </div>
     </div>
 
     <!-- Messages (read-only for manager) -->
     <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
-        <h3 class="text-white font-semibold mb-4">Messages</h3>
+        <h3 class="text-white font-semibold mb-4">{{ __('app.messages') }}</h3>
         @if($messages->isEmpty())
-            <p class="text-gray-500 text-sm text-center py-8">Aucun message dans cette conversation.</p>
+            <p class="text-gray-500 text-sm text-center py-8">{{ __('app.no_messages') }}</p>
         @else
             <div class="space-y-4">
                 @foreach($messages as $msg)
@@ -49,7 +49,7 @@
                         <div class="whitespace-pre-wrap">{{ $msg->content }}</div>
                         <div class="flex items-center justify-between gap-4 mt-1">
                             <span class="text-xs opacity-40">
-                                {{ $msg->isFromUser() ? 'Membre' : 'Agent' }}
+                                {{ $msg->isFromUser() ? __('app.member') : __('app.agent') }}
                             </span>
                             <span class="text-xs opacity-60">{{ $msg->created_at->format('H:i') }}</span>
                         </div>
@@ -61,7 +61,7 @@
     </div>
 
     <div class="mt-4 text-center">
-        <p class="text-xs text-gray-600">Vue en lecture seule — les managers ne peuvent pas envoyer de messages à la place des membres.</p>
+        <p class="text-xs text-gray-600">{{ __('app.read_only_view') }}</p>
     </div>
 </div>
 @endsection

@@ -1,28 +1,28 @@
 @extends('layouts.app')
 @section('title', $project->name)
 @section('content')
-    <x-page-header title="{{ $project->name }}" subtitle="Détails du projet" />
+    <x-page-header title="{{ $project->name }}" subtitle="{{ __('app.project_details') }}" />
 
     <div class="grid lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
 
             <!-- Project info -->
             <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
-                <h3 class="font-semibold text-white mb-4">Informations</h3>
+                <h3 class="font-semibold text-white mb-4">{{ __('app.information') }}</h3>
                 <div class="space-y-3 text-sm">
                     @if($project->description)
                     <div>
-                        <p class="text-xs font-semibold text-gray-500 uppercase mb-1">Description</p>
+                        <p class="text-xs font-semibold text-gray-500 uppercase mb-1">{{ __('app.description') }}</p>
                         <p class="text-gray-300">{{ $project->description }}</p>
                     </div>
                     @endif
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <p class="text-xs font-semibold text-gray-500 uppercase mb-1">Statut</p>
-                            <x-badge color="green">Actif</x-badge>
+                            <p class="text-xs font-semibold text-gray-500 uppercase mb-1">{{ __('app.status') }}</p>
+                            <x-badge color="green">{{ __('app.status_active') }}</x-badge>
                         </div>
                         <div>
-                            <p class="text-xs font-semibold text-gray-500 uppercase mb-1">Membres</p>
+                            <p class="text-xs font-semibold text-gray-500 uppercase mb-1">{{ __('app.members') }}</p>
                             <p class="text-white font-semibold">{{ $project->members->count() }}</p>
                         </div>
                     </div>
@@ -103,33 +103,33 @@
             @if($project->macMachines->isNotEmpty())
             @php $machine = $project->macMachines->first() @endphp
             <div class="bg-gray-900 rounded-xl border border-gray-800 p-5">
-                <p class="text-xs font-semibold text-gray-500 uppercase mb-3">Infrastructure</p>
+                <p class="text-xs font-semibold text-gray-500 uppercase mb-3">{{ __('app.infrastructure') }}</p>
                 <div class="flex items-center gap-2 mb-1">
                     <div class="w-2 h-2 rounded-full {{ $machine->status === 'online' ? 'bg-green-400 animate-pulse' : 'bg-red-400' }}"></div>
                     <span class="text-white font-semibold">{{ $machine->name }}</span>
                 </div>
                 <p class="text-xs text-gray-500">
-                    Mac Mini — {{ $machine->status === 'online' ? 'En ligne' : 'Hors ligne' }}
+                    Mac Mini — {{ $machine->status === 'online' ? __('app.status_online') : __('app.status_offline') }}
                 </p>
             </div>
             @endif
 
             <div class="bg-gray-900 rounded-xl border border-gray-800 p-5">
-                <p class="text-xs font-semibold text-gray-500 uppercase mb-3">Navigation</p>
+                <p class="text-xs font-semibold text-gray-500 uppercase mb-3">{{ __('app.navigation') }}</p>
                 <div class="space-y-2">
                     <a href="{{ route('portal.invoices.index') }}"
                        class="flex items-center gap-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 px-3 py-2 rounded-lg transition-colors">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
-                        Mes factures
+                        {{ __('app.my_invoices') }}
                     </a>
                     <a href="{{ route('portal.quotes.index') }}"
                        class="flex items-center gap-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 px-3 py-2 rounded-lg transition-colors">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                         </svg>
-                        Mes devis
+                        {{ __('app.my_quotes_nav') }}
                     </a>
                 </div>
             </div>

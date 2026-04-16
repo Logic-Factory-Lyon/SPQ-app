@@ -2,10 +2,11 @@
 """
 SPQ Daemon - Mac Mini Agent Bridge (HTTP API mode)
 Uses the SPQ Laravel HTTP API to poll for pending messages and submit results.
-Also handles agent initialization/resync tasks.
+Also handles agent initialization/resync tasks and centralized skill syncing.
 
 Usage:
     python3 spq_daemon.py --token TOKEN [options]
+    python3 spq_daemon.py --resync-skills  (one-shot skill sync from API)
 
 No SSH tunnel or direct MySQL access needed — all communication goes through HTTPS.
 """
@@ -29,8 +30,13 @@ HEARTBEAT_INTERVAL = 30   # seconds between heartbeats
 OPENCLAW_BINARY    = 'openclaw'
 OPENCLAW_TIMEOUT   = 300  # 5 minutes max per task
 SPQ_BASE_URL       = 'https://spq.app'
-DAEMON_VERSION     = 5     # increment when breaking changes are deployed
+DAEMON_VERSION     = 6     # increment when breaking changes are deployed
 SELF_UPDATE_INTERVAL = 300  # check for updates every 5 minutes
+
+# ── Central paths ───────────────────────────────────────────────────────────
+CENTRAL_SKILLS_DIR = os.path.expanduser('~/.openclaw/spqapp/skills')
+CENTRAL_TOOLS_DIR  = os.path.expanduser('~/.openclaw/spqapp/tools')
+BRIDGE_TOOLS_JSON  = os.path.join(CENTRAL_TOOLS_DIR, 'spq_bridge_tools.json')
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -137,7 +143,6 @@ def run_openclaw(profile: str, content: str) -> tuple[Optional[str], Optional[st
 def check_self_update(token: str) -> bool:
     """Download latest daemon script from SPQ and restart if version is newer."""
     log.info('Checking for daemon update...')
-    # /daemon/script returns plain text, not JSON — fetch directly
     url = f'{SPQ_BASE_URL}/daemon/script'
     req = urllib.request.Request(url)
     req.add_header('User-Agent', 'SPQ-Daemon/1.0')
@@ -148,7 +153,6 @@ def check_self_update(token: str) -> bool:
         log.error(f'Failed to download daemon update: {e}')
         return False
 
-    # Find DAEMON_VERSION in the downloaded script
     import re
     match = re.search(r'^DAEMON_VERSION\s*=\s*(\d+)', new_script, re.MULTILINE)
     remote_version = int(match.group(1)) if match else 1
@@ -158,7 +162,6 @@ def check_self_update(token: str) -> bool:
         log.info('Daemon is up to date.')
         return False
 
-    # Write new script to disk
     script_path = os.path.abspath(__file__)
     backup_path = script_path + '.bak'
 
@@ -171,7 +174,99 @@ def check_self_update(token: str) -> bool:
 
     log.info(f'Daemon updated to v{remote_version}. Restarting...')
     os.execv(sys.executable, [sys.executable] + sys.argv)
-    return True  # never reached
+    return True
+
+
+# ── Centralized Skills Sync ─────────────────────────────────────────────────
+
+def sync_skills_from_api(token: str) -> int:
+    """
+    One-shot sync: pull all active skills from SPQ API and write to central directory.
+    Returns the number of skills synced.
+    """
+    resp = api_request('GET', '/api/mac/skills/sync', token)
+    skills = resp.get('skills', [])
+
+    if not skills:
+        log.warning('No skills received from API')
+        return 0
+
+    os.makedirs(CENTRAL_SKILLS_DIR, exist_ok=True)
+
+    # Write individual .skill.json files
+    for skill in skills:
+        slug = skill.get('slug', 'unknown')
+        filepath = os.path.join(CENTRAL_SKILLS_DIR, f'{slug}.skill.json')
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(skill, f, indent=2)
+        log.info(f'Synced skill: {slug}.skill.json')
+
+    # Write master skills.json
+    skills_json_path = os.path.join(CENTRAL_SKILLS_DIR, 'skills.json')
+    with open(skills_json_path, 'w', encoding='utf-8') as f:
+        json.dump(skills, f, indent=2)
+    log.info(f'Written skills.json ({len(skills)} skills)')
+
+    # Write tools config if provided
+    tools_config = resp.get('tools_config', {})
+    if tools_config:
+        os.makedirs(CENTRAL_TOOLS_DIR, exist_ok=True)
+        with open(BRIDGE_TOOLS_JSON, 'w', encoding='utf-8') as f:
+            json.dump(tools_config, f, indent=2)
+        log.info(f'Written spq_bridge_tools.json')
+
+    return len(skills)
+
+
+def sync_skills_to_agent_workspace(project_id: int, agent_id: int, agent_skills: list) -> int:
+    """
+    Copy skill files from central directory to a specific agent's workspace.
+    Only copies skills that are attached to this agent (via agent_skill pivot).
+    agent_skills is a list of {slug, name, ...} dicts from the task payload.
+    """
+    pid = project_id if project_id else 0
+    workspace = os.path.expanduser(f'~/.openclaw/spqapp/{pid}/agents/workspace-{agent_id}')
+    agent_skills_dir = os.path.join(workspace, 'spqapp', 'skills')
+    agent_tools_dir = os.path.join(workspace, 'spqapp', 'tools')
+
+    os.makedirs(agent_skills_dir, exist_ok=True)
+    os.makedirs(agent_tools_dir, exist_ok=True)
+
+    # Copy only attached skills
+    synced = []
+    for skill in agent_skills:
+        slug = skill.get('slug', '')
+        central_file = os.path.join(CENTRAL_SKILLS_DIR, f'{slug}.skill.json')
+        if os.path.exists(central_file):
+            dest = os.path.join(agent_skills_dir, f'{slug}.skill.json')
+            shutil.copy2(central_file, dest)
+            synced.append(slug)
+        else:
+            log.warning(f'Central skill file not found for {slug}, creating from payload')
+            dest = os.path.join(agent_skills_dir, f'{slug}.skill.json')
+            with open(dest, 'w', encoding='utf-8') as f:
+                json.dump(skill, f, indent=2)
+            synced.append(slug)
+
+    # Write filtered skills.json for this agent
+    agent_skills_json = os.path.join(agent_skills_dir, 'skills.json')
+    with open(agent_skills_json, 'w', encoding='utf-8') as f:
+        json.dump(agent_skills, f, indent=2)
+    log.info(f'Written agent skills.json ({len(synced)} skills) for workspace-{agent_id}')
+
+    # Copy bridge tools config
+    if os.path.exists(BRIDGE_TOOLS_JSON):
+        dest = os.path.join(agent_tools_dir, 'spq_bridge_tools.json')
+        shutil.copy2(BRIDGE_TOOLS_JSON, dest)
+        log.info(f'Copied spq_bridge_tools.json to workspace')
+
+    # Clean up old-style skills/ directory if it exists
+    old_skills_dir = os.path.join(workspace, 'skills')
+    if os.path.isdir(old_skills_dir):
+        shutil.rmtree(old_skills_dir)
+        log.info(f'Removed old-style skills/ directory')
+
+    return len(synced)
 
 
 # ── Agent Initialization ────────────────────────────────────────────────────
@@ -185,6 +280,7 @@ def initialize_agent(task: dict) -> tuple[Optional[str], Optional[str]]:
     """
     Initialize an agent workspace on this machine and register it in OpenClaw.
     task['payload'] contains: profile, name, system_prompt, project_id, agent_id, skills
+    Skills are now synced from the central directory.
     """
     payload = task.get('payload', {})
     profile = payload.get('profile', '')
@@ -197,8 +293,6 @@ def initialize_agent(task: dict) -> tuple[Optional[str], Optional[str]]:
     if not profile:
         return None, 'No profile specified for agent initialization.'
 
-    # Workspace path: ~/.openclaw/spqapp/{project_id}/agents/workspace-{agent_id}
-    # Use 0 for agents without a project (standalone CRUD)
     pid = project_id if project_id else 0
     workspace_path = f'~/.openclaw/spqapp/{pid}/agents/workspace-{agent_id}'
     workspace = expand_path(workspace_path)
@@ -208,7 +302,6 @@ def initialize_agent(task: dict) -> tuple[Optional[str], Optional[str]]:
 
         # 1. Create workspace directory
         os.makedirs(workspace, exist_ok=True)
-        log.info(f'Created workspace: {workspace}')
 
         # 2. Write SOUL.md (system prompt)
         soul_path = os.path.join(workspace, 'SOUL.md')
@@ -226,29 +319,15 @@ def initialize_agent(task: dict) -> tuple[Optional[str], Optional[str]]:
                 f.write('This file is the agent\'s persistent memory.\n')
             log.info('Created MEMORY.md')
 
-        # 4. Write skills configuration
+        # 4. Sync skills from central directory to agent workspace
+        skills_count = 0
         if skills:
-            skills_dir = os.path.join(workspace, 'skills')
-            os.makedirs(skills_dir, exist_ok=True)
-
-            skills_json_path = os.path.join(skills_dir, 'skills.json')
-            with open(skills_json_path, 'w', encoding='utf-8') as f:
-                json.dump(skills, f, indent=2)
-            log.info(f'Written skills.json ({len(skills)} skills)')
-
-            for skill in skills:
-                slug = skill.get('slug', 'unknown')
-                skill_file = os.path.join(skills_dir, f'{slug}.md')
-                with open(skill_file, 'w', encoding='utf-8') as f:
-                    f.write(f'# {skill.get("name", slug)}\n\n')
-                    f.write(skill.get('prompt_template', ''))
-                    f.write('\n')
-                log.info(f'Written skill: {slug}.md')
+            skills_count = sync_skills_to_agent_workspace(project_id, agent_id, skills)
+            log.info(f'Synced {skills_count} skills to agent workspace')
 
         # 5. Register agent in OpenClaw via CLI
         agent_registered = False
         try:
-            # Check if agent already exists
             existing = get_openclaw_agents()
             if any(a.get('profile') == profile for a in existing):
                 log.info(f'Agent "{profile}" already exists in OpenClaw — skipping add')
@@ -274,7 +353,7 @@ def initialize_agent(task: dict) -> tuple[Optional[str], Optional[str]]:
         result_parts = [
             f'Workspace: {workspace}',
             f'SOUL.md: {os.path.getsize(soul_path)} bytes',
-            f'Skills: {len(skills)} configured',
+            f'Skills: {skills_count} synced (central → workspace)',
             f'OpenClaw agent: {"registered" if agent_registered else "failed (check logs)"}',
         ]
 
@@ -292,7 +371,6 @@ def initialize_agent(task: dict) -> tuple[Optional[str], Optional[str]]:
 def destroy_agent(task: dict) -> tuple[Optional[str], Optional[str]]:
     """
     Destroy an agent: delete from OpenClaw, remove workspace files.
-    task['payload'] contains: profile, project_id, agent_id
     """
     payload = task.get('payload', {})
     profile = payload.get('profile', '')
@@ -310,7 +388,6 @@ def destroy_agent(task: dict) -> tuple[Optional[str], Optional[str]]:
     try:
         log.info(f'Destroying agent "{name}" (profile={profile})')
 
-        # 1. Delete from OpenClaw CLI
         oc_deleted = False
         try:
             r = subprocess.run(
@@ -326,7 +403,6 @@ def destroy_agent(task: dict) -> tuple[Optional[str], Optional[str]]:
         except Exception as e:
             log.warning(f'Error deleting agent from OpenClaw: {e}')
 
-        # 2. Remove workspace directory
         ws_removed = False
         if os.path.isdir(workspace):
             shutil.rmtree(workspace)
@@ -347,8 +423,32 @@ def destroy_agent(task: dict) -> tuple[Optional[str], Optional[str]]:
         return None, f'Error destroying agent: {e}'
 
 
+def resync_agent(task: dict) -> tuple[Optional[str], Optional[str]]:
+    """
+    Resync an agent: update skill files in workspace from central directory.
+    """
+    payload = task.get('payload', {})
+    profile = payload.get('profile', '')
+    project_id = payload.get('project_id', 0)
+    agent_id = payload.get('agent_id', 0)
+    name = payload.get('name', 'unknown')
+    skills = payload.get('skills', [])
+
+    pid = project_id if project_id else 0
+    workspace = expand_path(f'~/.openclaw/spqapp/{pid}/agents/workspace-{agent_id}')
+
+    if not os.path.isdir(workspace):
+        return None, f'Workspace not found: {workspace}'
+
+    try:
+        count = sync_skills_to_agent_workspace(project_id, agent_id, skills)
+        return f'Resynced {count} skills for agent "{name}"', None
+    except Exception as e:
+        return None, f'Resync error: {e}'
+
+
 def process_tasks(token: str):
-    """Poll and process agent initialization tasks."""
+    """Poll and process agent initialization/resync tasks."""
     resp = api_request('GET', '/api/mac/tasks/pending', token)
     tasks = resp.get('tasks', [])
 
@@ -361,8 +461,10 @@ def process_tasks(token: str):
         task_id = task.get('id')
         log.info(f'Processing task {task_id} (type={task_type})')
 
-        if task_type in ('initialize', 'resync'):
+        if task_type == 'initialize':
             result, error = initialize_agent(task)
+        elif task_type == 'resync':
+            result, error = resync_agent(task)
         elif task_type == 'destroy':
             result, error = destroy_agent(task)
         else:
@@ -389,17 +491,30 @@ def main():
     parser.add_argument('--token',        required=True,  help='Machine token (mac_machines.token)')
     parser.add_argument('--api-url',      default=SPQ_BASE_URL, help='SPQ API base URL')
     parser.add_argument('--openclaw',     default=OPENCLAW_BINARY)
-    parser.add_argument('--poll-interval',type=int, default=POLL_INTERVAL)
+    parser.add_argument('--poll-interval', type=int, default=POLL_INTERVAL)
+    parser.add_argument('--resync-skills', action='store_true', help='One-shot: sync skills from API to central dir')
     args = parser.parse_args()
 
     SPQ_BASE_URL   = args.api_url.rstrip('/')
     OPENCLAW_BINARY = args.openclaw
     token          = args.token
 
+    # One-shot skills resync mode
+    if args.resync_skills:
+        log.info('One-shot skill resync from SPQ API...')
+        count = sync_skills_from_api(token)
+        log.info(f'Skill resync complete: {count} skills synced to {CENTRAL_SKILLS_DIR}')
+        return
+
     log.info(f'SPQ Daemon starting (HTTP) — API: {SPQ_BASE_URL}')
+
+    # Sync skills on startup
+    log.info('Syncing skills from API on startup...')
+    sync_skills_from_api(token)
 
     last_heartbeat = 0
     last_self_update = 0
+    last_skills_sync = time.time()
 
     while True:
         try:
@@ -416,7 +531,6 @@ def main():
                 resp = api_request('POST', '/api/mac/heartbeat', token, {'metadata': metadata})
                 if resp.get('status') == 'ok':
                     log.debug('Heartbeat OK')
-                    # Check if server wants us to restart/update
                     if resp.get('daemon_restart'):
                         log.info('Daemon restart requested by server. Updating and restarting...')
                         check_self_update(token)
@@ -429,10 +543,15 @@ def main():
                 check_self_update(token)
                 last_self_update = time.time()
 
-            # ── 3. Poll pending agent tasks ──────────────────────────────
+            # ── 3. Periodic skills sync (every 5 min) ───────────────────
+            if now - last_skills_sync >= 300:
+                sync_skills_from_api(token)
+                last_skills_sync = time.time()
+
+            # ── 4. Poll pending agent tasks ──────────────────────────────
             process_tasks(token)
 
-            # ── 4. Poll pending messages ──────────────────────────────────
+            # ── 5. Poll pending messages ──────────────────────────────────
             resp = api_request('GET', '/api/mac/messages/pending', token)
             messages = resp.get('messages', [])
 

@@ -156,12 +156,7 @@ class AgentCrudController extends Controller
                 'system_prompt' => $agent->system_prompt,
                 'project_id'    => $agent->project_id ?? 0,
                 'agent_id'      => $agent->id,
-                'skills'        => $agent->skills->map(fn($s) => [
-                    'slug'           => $s->slug,
-                    'name'           => $s->name,
-                    'prompt_template' => $s->prompt_template,
-                    'allowed_tools'  => $s->allowed_tools,
-                ])->values()->toArray(),
+                'skills'        => $agent->skills->map(fn($s) => $s->toSkillJson())->values()->toArray(),
             ],
         ]);
 
@@ -188,12 +183,7 @@ class AgentCrudController extends Controller
                 'system_prompt' => $agent->system_prompt,
                 'project_id'    => $agent->project_id ?? 0,
                 'agent_id'      => $agent->id,
-                'skills'        => $agent->skills->map(fn($s) => [
-                    'slug'           => $s->slug,
-                    'name'           => $s->name,
-                    'prompt_template' => $s->prompt_template,
-                    'allowed_tools'  => $s->allowed_tools,
-                ])->values()->toArray(),
+                'skills'        => $agent->skills->map(fn($s) => $s->toSkillJson())->values()->toArray(),
             ],
         ]);
 

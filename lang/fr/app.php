@@ -276,6 +276,14 @@ return [
     'allowed_tools_help'     => 'Liste des outils OpenClaw que l\'agent peut utiliser pour ce skill (ex: ["WebFetch", "Grep", "Read"]).',
     'allowed_tools_help_short'=> 'Liste des outils OpenClaw que l\'agent peut utiliser pour ce skill.',
     'delete_skill_confirm'    => 'Supprimer ce skill ?',
+    'handler_type'            => 'Type de handler',
+    'handler_type_help'       => 'Prompt = template simple. Native Tool = utilise les bridge tools SPQ. Composite = les deux.',
+    'parameter_schema'        => 'Schema de paramètres (JSON Schema)',
+    'parameter_schema_help'   => 'Définition structurée des paramètres du skill. Si vide, extrait les {{param}} du template.',
+    'output_schema'            => 'Schema de sortie (JSON Schema)',
+    'output_schema_help'      => 'Format attendu du résultat du skill (optionnel).',
+    'action_handlers'          => 'Action handlers (JSON)',
+    'action_handlers_help'    => 'Noms des fonctions spq_bridge.py appelées (ex: ["run_website_test", "create_document"]).',
 
     // ── Services ───────────────────────────────────────────────────────────
     'services_subtitle'       => 'Services disponibles pour les devis et factures.',

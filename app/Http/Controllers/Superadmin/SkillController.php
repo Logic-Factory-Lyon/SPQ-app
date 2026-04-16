@@ -25,19 +25,7 @@ class SkillController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:skills',
-            'description' => 'nullable|string',
-            'icon' => 'nullable|string|max:255',
-            'category' => 'nullable|string|max:255',
-            'prompt_template' => 'required|string',
-            'allowed_tools' => 'nullable|array',
-            'allowed_tools.*' => 'string',
-            'is_active' => 'boolean',
-        ]);
-
-        $validated['is_active'] = $validated['is_active'] ?? true;
+        $validated = $this->validateSkill($request);
         Skill::create($validated);
 
         return redirect()->route('admin.skills.index')
@@ -51,19 +39,8 @@ class SkillController extends Controller
 
     public function update(Request $request, Skill $skill): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:skills,slug,' . $skill->id,
-            'description' => 'nullable|string',
-            'icon' => 'nullable|string|max:255',
-            'category' => 'nullable|string|max:255',
-            'prompt_template' => 'required|string',
-            'allowed_tools' => 'nullable|array',
-            'allowed_tools.*' => 'string',
-            'is_active' => 'boolean',
-        ]);
-
-        $validated['is_active'] = $validated['is_active'] ?? false;
+        $validated = $this->validateSkill($request, $skill);
+        $validated['version'] = $skill->version + 1;
         $skill->update($validated);
 
         return redirect()->route('admin.skills.index')
@@ -99,5 +76,50 @@ class SkillController extends Controller
         $agent->skills()->detach($skill->id);
 
         return back()->with('success', "Skill « {$skill->name} » retiré de l'agent.");
+    }
+
+    /**
+     * Shared validation logic for store and update.
+     */
+    protected function validateSkill(Request $request, ?Skill $skill = null): array
+    {
+        $slugRule = 'required|string|max:255|unique:skills,slug';
+        if ($skill) {
+            $slugRule .= ',' . $skill->id;
+        }
+
+        $validated = $request->validate([
+            'name'              => 'required|string|max:255',
+            'slug'              => $slugRule,
+            'description'       => 'nullable|string',
+            'icon'              => 'nullable|string|max:255',
+            'category'          => 'nullable|string|max:255',
+            'handler_type'      => 'required|in:prompt,native_tool,composite',
+            'prompt_template'   => 'required|string',
+            'parameter_schema'  => 'nullable|string',
+            'output_schema'     => 'nullable|string',
+            'allowed_tools'     => 'nullable|array',
+            'allowed_tools.*'   => 'string',
+            'action_handlers'   => 'nullable|array',
+            'action_handlers.*' => 'string',
+            'is_active'         => 'boolean',
+        ]);
+
+        // Decode JSON schema fields
+        if ($validated['parameter_schema'] ?? null) {
+            $validated['parameter_schema'] = json_decode($validated['parameter_schema'], true) ?: null;
+        } else {
+            $validated['parameter_schema'] = null;
+        }
+
+        if ($validated['output_schema'] ?? null) {
+            $validated['output_schema'] = json_decode($validated['output_schema'], true) ?: null;
+        } else {
+            $validated['output_schema'] = null;
+        }
+
+        $validated['is_active'] = $validated['is_active'] ?? ($skill ? false : true);
+
+        return $validated;
     }
 }

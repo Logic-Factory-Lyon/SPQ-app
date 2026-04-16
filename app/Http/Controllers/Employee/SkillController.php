@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\ProjectMember;
+use App\Models\SkillExecution;
 use App\Services\MacMachine\OpenClawDispatchService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,6 +26,7 @@ class SkillController extends Controller
 
     /**
      * List available skills for the authenticated employee's agent.
+     * Now returns parameter_schema-based field definitions when available.
      */
     public function index(Request $request): JsonResponse
     {
@@ -39,12 +41,14 @@ class SkillController extends Controller
             ->where('is_active', true)
             ->get()
             ->map(fn($s) => [
-                'slug' => $s->slug,
-                'name' => $s->name,
-                'description' => $s->description,
-                'icon' => $s->icon,
-                'category' => $s->category,
-                'param_fields' => $this->extractParamFields($s->prompt_template),
+                'slug'            => $s->slug,
+                'name'            => $s->name,
+                'description'     => $s->description,
+                'icon'            => $s->icon,
+                'category'        => $s->category,
+                'handler_type'    => $s->handler_type,
+                'param_fields'    => $s->param_fields,
+                'version'         => $s->version,
             ]);
 
         return response()->json(['skills' => $skills]);
@@ -52,6 +56,7 @@ class SkillController extends Controller
 
     /**
      * Dispatch a skill instruction to the agent.
+     * Creates a SkillExecution record for the audit trail.
      */
     public function dispatch(Request $request, Conversation $conversation): JsonResponse
     {
@@ -61,7 +66,7 @@ class SkillController extends Controller
         $validated = $request->validate([
             'skill_slug' => 'required|string|exists:skills,slug',
             'params' => 'nullable|array',
-            'params.*' => 'string|max:1000',
+            'params.*' => 'nullable|string|max:5000',
         ]);
 
         $agent = $member->agent;
@@ -75,13 +80,13 @@ class SkillController extends Controller
         // Save inbound message (user → system) with skill label
         Message::create([
             'conversation_id' => $conversation->id,
-            'direction' => 'in',
-            'message_type' => 'skill',
-            'content' => $this->formatUserMessage($validated['skill_slug'], $validated['params'] ?? []),
-            'status' => 'done',
-            'metadata' => [
+            'direction'       => 'in',
+            'message_type'    => 'skill',
+            'content'         => $this->formatUserMessage($validated['skill_slug'], $validated['params'] ?? []),
+            'status'          => 'done',
+            'metadata'        => [
                 'skill_slug' => $validated['skill_slug'],
-                'params' => $validated['params'] ?? [],
+                'params'     => $validated['params'] ?? [],
             ],
         ]);
 
@@ -94,23 +99,6 @@ class SkillController extends Controller
         );
 
         return response()->json(['status' => 'queued']);
-    }
-
-    /**
-     * Extract {{param}} placeholders from a prompt template and return field definitions.
-     */
-    protected function extractParamFields(string $template): array
-    {
-        preg_match_all('/\{\{(\w+)\}\}/', $template, $matches);
-        $fields = [];
-        foreach ($matches[1] as $param) {
-            $fields[] = [
-                'key' => $param,
-                'label' => ucfirst(str_replace('_', ' ', $param)),
-                'placeholder' => '',
-            ];
-        }
-        return $fields;
     }
 
     protected function formatUserMessage(string $skillSlug, array $params): string

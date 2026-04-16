@@ -4,7 +4,7 @@
     <div class="flex items-center gap-2 text-sm text-gray-400">
         <a href="{{ route('admin.skills.index') }}" class="hover:text-white">{{ __('app.skills') }}</a>
         <span>/</span>
-        <span class="text-white">{{ __('app.new_project') }}</span>
+        <span class="text-white">{{ __('app.new_skill_title') }}</span>
     </div>
 @endsection
 @section('content')
@@ -46,6 +46,17 @@
                 </div>
             </div>
 
+            {{-- Handler Type --}}
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">{{ __('app.handler_type') }}</label>
+                <p class="text-xs text-gray-500 mb-1">{{ __('app.handler_type_help') }}</p>
+                <select name="handler_type" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="prompt" {{ old('handler_type', 'prompt') === 'prompt' ? 'selected' : '' }}>Prompt</option>
+                    <option value="native_tool" {{ old('handler_type') === 'native_tool' ? 'selected' : '' }}>Native Tool</option>
+                    <option value="composite" {{ old('handler_type') === 'composite' ? 'selected' : '' }}>Composite</option>
+                </select>
+            </div>
+
             <div>
                 <label class="block text-sm font-medium text-gray-300 mb-1">{{ __('app.prompt_template') }}</label>
                 <p class="text-xs text-gray-500 mb-1">{{ __('app.prompt_template_help') }}</p>
@@ -53,10 +64,34 @@
                     class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">{{ old('prompt_template') }}</textarea>
             </div>
 
+            {{-- Parameter Schema (JSON) --}}
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">{{ __('app.parameter_schema') }}</label>
+                <p class="text-xs text-gray-500 mb-1">{{ __('app.parameter_schema_help') }}</p>
+                <textarea name="parameter_schema" rows="6"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">{{ old('parameter_schema') }}</textarea>
+            </div>
+
+            {{-- Output Schema (JSON) --}}
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">{{ __('app.output_schema') }}</label>
+                <p class="text-xs text-gray-500 mb-1">{{ __('app.output_schema_help') }}</p>
+                <textarea name="output_schema" rows="4"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">{{ old('output_schema') }}</textarea>
+            </div>
+
             <div>
                 <label class="block text-sm font-medium text-gray-300 mb-1">{{ __('app.allowed_tools') }}</label>
                 <p class="text-xs text-gray-500 mb-1">{{ __('app.allowed_tools_help_short') }}</p>
                 <input type="text" name="allowed_tools" value="{{ old('allowed_tools', '[]') }}"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+
+            {{-- Action Handlers --}}
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">{{ __('app.action_handlers') }}</label>
+                <p class="text-xs text-gray-500 mb-1">{{ __('app.action_handlers_help') }}</p>
+                <input type="text" name="action_handlers" value="{{ old('action_handlers', '[]') }}"
                     class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
 

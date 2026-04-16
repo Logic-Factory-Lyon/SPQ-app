@@ -267,14 +267,72 @@ function chatInterface(conversationId, lastMessageId, hasPending) {
                 container.innerHTML = '';
                 if (skill && skill.param_fields) {
                     for (const field of skill.param_fields) {
-                        container.innerHTML += `
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-1">${field.label}</label>
-                                <input type="text" data-skill-param="${field.key}"
-                                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
-                                           focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                    placeholder="${field.placeholder || ''}">
-                            </div>`;
+                        const req = field.required ? '<span class="text-red-400 ml-0.5">*</span>' : '';
+                        const desc = field.description ? `<p class="text-xs text-gray-500 mt-0.5 mb-1">${field.description}</p>` : '';
+
+                        if (field.enum) {
+                            // Select dropdown for enum values
+                            const options = field.enum.map(v => `<option value="${v}">${v}</option>`).join('');
+                            container.innerHTML += `
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-1">${field.label}${req}</label>
+                                    ${desc}
+                                    <select data-skill-param="${field.key}"
+                                        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
+                                               focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option value="">—</option>
+                                        ${options}
+                                    </select>
+                                </div>`;
+                        } else if (field.type === 'number' || field.type === 'integer') {
+                            container.innerHTML += `
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-1">${field.label}${req}</label>
+                                    ${desc}
+                                    <input type="number" data-skill-param="${field.key}"
+                                        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
+                                               focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>`;
+                        } else if (field.format === 'uri') {
+                            container.innerHTML += `
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-1">${field.label}${req}</label>
+                                    ${desc}
+                                    <input type="url" data-skill-param="${field.key}"
+                                        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm font-mono
+                                               focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        placeholder="https://...">
+                                </div>`;
+                        } else if (field.type === 'boolean') {
+                            container.innerHTML += `
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" data-skill-param="${field.key}" value="true" id="param_${field.key}"
+                                        class="rounded border-gray-700 bg-gray-800 text-indigo-600 focus:ring-indigo-500">
+                                    <label for="param_${field.key}" class="text-sm text-gray-300">${field.label}</label>
+                                </div>`;
+                        } else {
+                            // Default: text input (textarea for long descriptions)
+                            const isLong = field.key === 'instructions' || field.key === 'context' || field.key === 'content';
+                            if (isLong) {
+                                container.innerHTML += `
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300 mb-1">${field.label}${req}</label>
+                                        ${desc}
+                                        <textarea data-skill-param="${field.key}" rows="3"
+                                            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
+                                                   focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                                    </div>`;
+                            } else {
+                                container.innerHTML += `
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300 mb-1">${field.label}${req}</label>
+                                        ${desc}
+                                        <input type="text" data-skill-param="${field.key}"
+                                            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
+                                                   focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    </div>`;
+                            }
+                        }
                     }
                 }
             });
@@ -284,7 +342,12 @@ function chatInterface(conversationId, lastMessageId, hasPending) {
             this.skillDispatching = true;
             const params = {};
             document.querySelectorAll('[data-skill-param]').forEach(input => {
-                params[input.dataset.skillParam] = input.value;
+                const key = input.dataset.skillParam;
+                if (input.type === 'checkbox') {
+                    params[key] = input.checked ? 'true' : 'false';
+                } else {
+                    params[key] = input.value;
+                }
             });
 
             this.waiting = true;

@@ -276,6 +276,14 @@ return [
     'allowed_tools_help'     => 'List of OpenClaw tools the agent can use for this skill (e.g. ["WebFetch", "Grep", "Read"]).',
     'allowed_tools_help_short'=> 'List of OpenClaw tools the agent can use for this skill.',
     'delete_skill_confirm'    => 'Delete this skill?',
+    'handler_type'            => 'Handler type',
+    'handler_type_help'       => 'Prompt = simple template. Native Tool = uses SPQ bridge tools. Composite = both.',
+    'parameter_schema'        => 'Parameter schema (JSON Schema)',
+    'parameter_schema_help'   => 'Structured definition of skill parameters. If empty, extracts {{param}} from template.',
+    'output_schema'            => 'Output schema (JSON Schema)',
+    'output_schema_help'      => 'Expected format of skill result (optional).',
+    'action_handlers'          => 'Action handlers (JSON)',
+    'action_handlers_help'    => 'Names of spq_bridge.py functions called (e.g. ["run_website_test", "create_document"]).',
 
     // ── Services ───────────────────────────────────────────────────────────
     'services_subtitle'       => 'Services available for quotes and invoices.',
